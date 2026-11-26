@@ -2162,14 +2162,27 @@ async fn install_app_update(
                 return Err("Downloaded file is not a valid Windows executable".into());
             }
 
-            let cur_str = cur_exe.to_string_lossy().to_string();
-            let new_str = new_exe.to_string_lossy().to_string();
-            let script = format!(
-                "timeout /t 1 /nobreak >nul & move /Y \"{}\" \"{}\" >nul & start \"\" \"{}\"",
-                new_str, cur_str, cur_str
+            let cur_clean = cur_exe
+                .to_string_lossy()
+                .trim_start_matches(r"\\?\")
+                .replace('\'', "''");
+            let new_clean = new_exe
+                .to_string_lossy()
+                .trim_start_matches(r"\\?\")
+                .replace('\'', "''");
+            let ps_script = format!(
+                "for ($i=0; $i -lt 10; $i++) {{ Start-Sleep -Milliseconds 400; try {{ Move-Item -Force -LiteralPath '{}' -Destination '{}' -ErrorAction Stop; break }} catch {{}} }}; Start-Process -FilePath '{}'",
+                new_clean, cur_clean, cur_clean
             );
-            std::process::Command::new("cmd")
-                .args(["/C", &script])
+            std::process::Command::new("powershell")
+                .args([
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-WindowStyle",
+                    "Hidden",
+                    "-Command",
+                    &ps_script,
+                ])
                 .creation_flags(CREATE_NO_WINDOW)
                 .spawn()
                 .map_err(|e| format!("Failed to spawn updater: {e}"))?;
