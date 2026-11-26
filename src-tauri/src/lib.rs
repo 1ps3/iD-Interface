@@ -2433,7 +2433,6 @@ async fn run_direct_usb_session(
                 let Ok(ready_dev) = api.open_first() else {
                     continue;
                 };
-                had_disconnected = false;
                 let snap_settings = worker_live_settings
                     .lock()
                     .map(|g| g.clone())
