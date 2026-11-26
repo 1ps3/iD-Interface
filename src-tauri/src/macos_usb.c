@@ -45,6 +45,28 @@ static void cf_prop_to_cstr(io_registry_entry_t entry, CFStringRef key, char *ou
     CFRelease(ref);
 }
 
+static int probe_device_awake(IOUSBDeviceInterface182 **dev) {
+    uint8_t buf[4];
+    IOUSBDevRequestTO req;
+    memset(&req, 0, sizeof(req));
+    req.bmRequestType = 0xC1; /* IN | Vendor | Interface */
+    req.bRequest = 0x01;
+    req.wValue = 0x0200; /* Sample rate */
+    req.wIndex = 0x0000; /* ENT_SYSTEM */
+    req.wLength = 4;
+    req.pData = (void *)buf;
+    req.noDataTimeout = 500;
+    req.completionTimeout = 500;
+    if ((*dev)->DeviceRequestTO(dev, &req) == KERN_SUCCESS) {
+        return 1;
+    }
+    /* Fallback probe: Main Monitor Vol (ENT_MONITOR 0x04, cs 0x0A) */
+    req.wValue = 0x0A00;
+    req.wIndex = 0x0400;
+    req.wLength = 2;
+    return ((*dev)->DeviceRequestTO(dev, &req) == KERN_SUCCESS) ? 1 : 0;
+}
+
 static void *scan_usb_class(const char *class_name, char *out_name, int out_name_len) {
     CFMutableDictionaryRef matching = IOServiceMatching(class_name);
     if (!matching) return NULL;
@@ -54,6 +76,10 @@ static void *scan_usb_class(const char *class_name, char *out_name, int out_name
     if (kr != KERN_SUCCESS || !iter) return NULL;
 
     void *result = NULL;
+    void *fallback_dev = NULL;
+    char fallback_name[128];
+    fallback_name[0] = '\0';
+
     io_service_t service;
     while ((service = IOIteratorNext(iter)) != 0) {
         int vid = cf_prop_to_int(service, CFSTR("idVendor"));
@@ -78,16 +104,32 @@ static void *scan_usb_class(const char *class_name, char *out_name, int out_name
                 );
                 (*plug)->Release(plug);
                 if (res == 0 && dev) {
-                    if (out_name && out_name_len > 0) {
-                        cf_prop_to_cstr(service, CFSTR("USB Product Name"), out_name, out_name_len);
-                        if (out_name[0] == '\0') {
-                            strncpy(out_name, fallback_name_for_pid(pid), (size_t)(out_name_len - 1));
+                    char prod[128];
+                    cf_prop_to_cstr(service, CFSTR("USB Product Name"), prod, sizeof(prod));
+                    if (prod[0] == '\0') {
+                        strncpy(prod, fallback_name_for_pid(pid), sizeof(prod) - 1);
+                        prod[sizeof(prod) - 1] = '\0';
+                    }
+                    if (probe_device_awake(dev)) {
+                        if (out_name && out_name_len > 0) {
+                            strncpy(out_name, prod, (size_t)(out_name_len - 1));
                             out_name[out_name_len - 1] = '\0';
                         }
+                        if (fallback_dev) {
+                            IOUSBDeviceInterface182 **fb = (IOUSBDeviceInterface182 **)fallback_dev;
+                            (*fb)->Release(fb);
+                            fallback_dev = NULL;
+                        }
+                        IOObjectRelease(service);
+                        result = (void *)dev;
+                        break;
+                    } else if (!fallback_dev) {
+                        fallback_dev = (void *)dev;
+                        strncpy(fallback_name, prod, sizeof(fallback_name) - 1);
+                        fallback_name[sizeof(fallback_name) - 1] = '\0';
+                    } else {
+                        (*dev)->Release(dev);
                     }
-                    IOObjectRelease(service);
-                    result = (void *)dev;
-                    break;
                 }
             }
         }
@@ -95,6 +137,13 @@ static void *scan_usb_class(const char *class_name, char *out_name, int out_name
     }
 
     IOObjectRelease(iter);
+    if (!result && fallback_dev) {
+        if (out_name && out_name_len > 0) {
+            strncpy(out_name, fallback_name, (size_t)(out_name_len - 1));
+            out_name[out_name_len - 1] = '\0';
+        }
+        return fallback_dev;
+    }
     return result;
 }
 

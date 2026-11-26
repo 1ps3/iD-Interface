@@ -6322,10 +6322,15 @@ html.is-snapped body {
 }
 
 :root[data-light-ui="true"] .preamp-ch-num,
-:root[data-light-ui="true"] .sg-status-pill {
+:root[data-light-ui="true"] .sg-status-pill,
+:root[data-light-ui="true"] .phase-tag {
   background: #e6e9f1;
   border-color: #cfd4df;
   color: #252934;
+}
+
+:root[data-light-ui="true"] .phase-placeholder h3 {
+  color: #15171d;
 }
 
 :root[data-light-ui="true"] .sg-status-pill.running {
@@ -7176,16 +7181,16 @@ html.tray-menu-page body {
   --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif;
   --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
   --font-mono: "SF Mono", ui-monospace, Menlo, monospace;
-  --bg-shell: rgba(30, 32, 39, 0.86);
+  --bg-shell: rgba(28, 30, 37, 0.9);
   --shell-tex:
     radial-gradient(88% 60% at 14% 0%, rgba(120, 196, 255, 0.11) 0%, transparent 56%),
     radial-gradient(72% 52% at 88% 100%, rgba(160, 132, 255, 0.09) 0%, transparent 56%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
-  --bg-pod: rgba(41, 44, 54, 0.78);
-  --bg-canvas: rgba(26, 28, 35, 0.74);
-  --bg-card: rgba(48, 52, 63, 0.76);
-  --bg-panel: rgba(56, 61, 74, 0.8);
-  --bg-inset: rgba(38, 41, 50, 0.74);
+  --bg-pod: rgba(38, 41, 51, 0.87);
+  --bg-canvas: rgba(25, 27, 34, 0.84);
+  --bg-card: rgba(45, 49, 60, 0.86);
+  --bg-panel: rgba(54, 59, 72, 0.88);
+  --bg-inset: rgba(36, 39, 48, 0.85);
   --bg-hover: rgba(255, 255, 255, 0.12);
   --border: rgba(255, 255, 255, 0.14);
   --border-subtle: rgba(255, 255, 255, 0.085);
@@ -7231,12 +7236,12 @@ html.tray-menu-page body {
 
 /* Automatic macOS Clear vs Tinted (Reduce Transparency) — refined, never overly see-through */
 :root[data-theme="liquidglass"][data-glass-tint="clear"] {
-  --bg-shell: rgba(30, 32, 39, 0.85);
-  --bg-pod: rgba(41, 44, 54, 0.78);
-  --bg-canvas: rgba(26, 28, 35, 0.74);
-  --bg-card: rgba(48, 52, 63, 0.76);
-  --bg-panel: rgba(56, 61, 74, 0.8);
-  --bg-inset: rgba(38, 41, 50, 0.74);
+  --bg-shell: rgba(28, 30, 37, 0.89);
+  --bg-pod: rgba(38, 41, 51, 0.86);
+  --bg-canvas: rgba(25, 27, 34, 0.82);
+  --bg-card: rgba(45, 49, 60, 0.85);
+  --bg-panel: rgba(54, 59, 72, 0.88);
+  --bg-inset: rgba(36, 39, 48, 0.84);
 }
 
 :root[data-theme="liquidglass"][data-glass-tint="tinted"] {
@@ -7872,9 +7877,14 @@ html.tray-menu-page body {
 }
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .preamp-ch-num,
-:root[data-theme="liquidglass"][data-glass-scheme="light"] .sg-status-pill {
-  background: rgba(20, 30, 50, 0.07);
-  border-color: rgba(25, 35, 55, 0.13);
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .sg-status-pill,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .phase-tag {
+  background: rgba(20, 30, 50, 0.08);
+  border-color: rgba(25, 35, 55, 0.14);
+  color: #141821;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .phase-placeholder h3 {
   color: #141821;
 }
 

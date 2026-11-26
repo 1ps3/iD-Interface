@@ -213,8 +213,91 @@ export function createSettingsView(container, store, callbacks = {}) {
     devCol.innerHTML = "";
 
     const p = store.paths;
+    const invoke = window.__TAURI__?.core?.invoke;
     if (!p.system || !p.monitorControl) {
-      topStrip.innerHTML = `<div class="phase-placeholder"><span class="phase-tag">SETTINGS</span><h3>Connecting to device…</h3></div>`;
+      topStrip.innerHTML = `<div class="phase-placeholder" style="grid-column: 1 / -1;"><span class="phase-tag">SETTINGS</span><h3>Waiting for device…</h3></div>`;
+      monCol.innerHTML = `
+        <div class="dock-title">MONITOR SETTINGS</div>
+        <div class="phase-placeholder"><span class="phase-tag">NO DEVICE</span><h3>Connect an Audient iD MK3</h3><p>Monitor level, Dim, Ref, Talkback, and Function button settings appear once connected.</p></div>
+      `;
+      devCol.innerHTML = `
+        <div class="dock-title">APP &amp; SOFTWARE SETTINGS</div>
+        <div class="settings-card-row">
+          <div>
+            <div class="set-row-title">HARDWARE ENGINE</div>
+            <div class="set-row-desc">Switch between Direct USB and Audient Device Manager</div>
+          </div>
+          <select class="dock-select set-select" id="setOfflineEngine">
+            <option value="direct_usb">Direct USB</option>
+            <option value="adm">Audient Device Manager</option>
+          </select>
+        </div>
+        <div class="settings-card-row">
+          <div>
+            <div class="set-row-title">SOFTWARE UPDATES</div>
+            <div class="set-row-desc" id="updateStatusDesc">iD Interface v${appVersion} · Checks GitHub Releases</div>
+          </div>
+          <button type="button" class="mini-pill-btn hw-mem-btn" id="btnCheckUpdates">CHECK</button>
+        </div>
+      `;
+      const selOfflineEngine = devCol.querySelector("#setOfflineEngine");
+      const updateStatusDesc = devCol.querySelector("#updateStatusDesc");
+      const btnCheckUpdates = devCol.querySelector("#btnCheckUpdates");
+      if (invoke) {
+        invoke("get_backend_info")
+          .then((info) => {
+            if (info?.platform) isMacOS = info.platform === "macos";
+            if (info?.appVersion) appVersion = info.appVersion;
+            if (info?.activeEngine) activeEngine = info.activeEngine;
+            if (info?.mode && selOfflineEngine) selOfflineEngine.value = info.mode;
+            if (updateStatusDesc && !lastUpdateCheck) {
+              updateStatusDesc.textContent = `iD Interface v${appVersion} · Checks GitHub Releases`;
+            }
+          })
+          .catch(() => {});
+        selOfflineEngine?.addEventListener("change", () => {
+          invoke("set_backend_mode", { mode: selOfflineEngine.value }).catch(() => {});
+        });
+      }
+      btnCheckUpdates?.addEventListener("click", async () => {
+        if (lastUpdateCheck?.status === "available" && lastUpdateCheck.downloadUrl && invoke) {
+          btnCheckUpdates.disabled = true;
+          btnCheckUpdates.textContent = "UPDATING…";
+          if (updateStatusDesc) updateStatusDesc.textContent = `Downloading v${lastUpdateCheck.latestVersion} & restarting…`;
+          try {
+            await invoke("install_app_update", {
+              portableUrl: lastUpdateCheck.portableUrl || "",
+              setupUrl: lastUpdateCheck.setupUrl || "",
+              fallbackUrl: lastUpdateCheck.downloadUrl || lastUpdateCheck.releaseUrl || "",
+            });
+          } catch {
+            btnCheckUpdates.disabled = false;
+            btnCheckUpdates.textContent = "UPDATE";
+            invoke("open_external_url", { url: lastUpdateCheck.downloadUrl }).catch(() => {});
+          }
+          return;
+        }
+        btnCheckUpdates.textContent = "CHECKING…";
+        const res = await checkForGithubUpdate(appVersion, isMacOS);
+        lastUpdateCheck = res;
+        if (updateStatusDesc) updateStatusDesc.textContent = res.message;
+        if (res.status === "available") {
+          btnCheckUpdates.textContent = "UPDATE";
+          btnCheckUpdates.classList.add("is-confirmed", "is-pulsing");
+        } else if (res.status === "up_to_date") {
+          btnCheckUpdates.textContent = "LATEST ✓";
+          btnCheckUpdates.classList.add("is-confirmed");
+          setTimeout(() => {
+            btnCheckUpdates.textContent = "CHECK";
+            btnCheckUpdates.classList.remove("is-confirmed");
+          }, 2200);
+        } else {
+          btnCheckUpdates.textContent = res.status === "unconfigured" ? "NO REPO" : "OFFLINE";
+          setTimeout(() => {
+            btnCheckUpdates.textContent = "CHECK";
+          }, 2200);
+        }
+      });
       return;
     }
 
@@ -246,7 +329,6 @@ export function createSettingsView(container, store, callbacks = {}) {
     const selClk = topStrip.querySelector("#setClk");
     const selBuf = topStrip.querySelector("#setBuf");
 
-    const invoke = window.__TAURI__?.core?.invoke;
     if (invoke && selEngine) {
       invoke("get_backend_info")
         .then((info) => {

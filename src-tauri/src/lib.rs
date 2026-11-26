@@ -2359,10 +2359,18 @@ async fn install_app_update(
              hdiutil attach '{dmg}' -nobrowse -quiet -mountpoint '{mnt}' || exit 1\n\
              NEW_APP=$(find '{mnt}' -maxdepth 2 -name '*.app' | head -n 1)\n\
              if [ -n \"$NEW_APP\" ]; then\n\
-               rm -rf '{app}.new'\n\
-               if ditto \"$NEW_APP\" '{app}.new'; then\n\
-                 rm -rf '{app}' && mv '{app}.new' '{app}'\n\
-                 xattr -cr '{app}' 2>/dev/null || true\n\
+               rm -rf '{app}.new' '{app}.old'\n\
+               if ditto \"$NEW_APP\" '{app}.new' && [ -f '{app}.new/Contents/Info.plist' ]; then\n\
+                 if mv '{app}' '{app}.old'; then\n\
+                   if mv '{app}.new' '{app}'; then\n\
+                     rm -rf '{app}.old'\n\
+                     xattr -cr '{app}' 2>/dev/null || true\n\
+                   else\n\
+                     mv '{app}.old' '{app}' 2>/dev/null || true\n\
+                   fi\n\
+                 else\n\
+                   rm -rf '{app}.new'\n\
+                 fi\n\
                else\n\
                  rm -rf '{app}.new'\n\
                fi\n\
@@ -3751,9 +3759,9 @@ pub fn run() {
                 tauri::RunEvent::Reopen { .. } => {
                     show_main_window(app_handle);
                 }
-                tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit => {
-                    // Gracefully stop the Direct USB worker so macOS IOKit releases the device handle
-                    // cleanly before termination (prevents stale USB pipe on Cmd+Q -> immediate reopen).
+                tauri::RunEvent::Exit => {
+                    // Only stop the Direct USB worker on actual process Exit (never ExitRequested,
+                    // which can be cancelled and would otherwise leave the worker permanently stopped).
                     APP_EXITING.store(true, Ordering::SeqCst);
                     std::thread::sleep(Duration::from_millis(45));
                 }
