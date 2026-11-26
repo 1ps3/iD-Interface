@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Inner card vertical dark studio charcoal -->
+    <linearGradient id="cardBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#19191d" />
+      <stop offset="55%" stop-color="#141417" />
+      <stop offset="100%" stop-color="#101012" />
+    </linearGradient>
+
+    <!-- Top-lit monochrome inner card edge highlight -->
+    <linearGradient id="innerBevel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.20" />
+      <stop offset="42%" stop-color="#ffffff" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.03" />
+    </linearGradient>
+
+    <!-- Subtle outer shell hairline -->
+    <linearGradient id="outerBevel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#303036" />
+      <stop offset="100%" stop-color="#1c1c20" />
+    </linearGradient>
+
+    <!-- Half-exposed top purple ambient splash (Antigravity Mixer/Preamp card DNA) -->
+    <radialGradient id="topSplash" cx="512" cy="92" r="470" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#b18aff" stop-opacity="0.20" />
+      <stop offset="48%" stop-color="#b18aff" stop-opacity="0.06" />
+      <stop offset="100%" stop-color="#b18aff" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Subtle cool white top sheen -->
+    <radialGradient id="topSheen" cx="512" cy="80" r="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.06" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Matte-black rotary knob face -->
+    <linearGradient id="knobFace" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e1e23" />
+      <stop offset="55%" stop-color="#151519" />
+      <stop offset="100%" stop-color="#0f0f12" />
+    </linearGradient>
+
+    <!-- Soft knob drop shadow -->
+    <filter id="knobShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+
+    <!-- Clip to inner rounded card -->
+    <clipPath id="innerCardClip">
+      <rect x="98" y="98" width="828" height="828" rx="184" />
+    </clipPath>
+  </defs>
+
+  <!-- Outer #0c0c0c squircle shell + outer bezel ring -->
+  <rect x="44" y="44" width="936" height="936" rx="228" fill="#0c0c0c" stroke="url(#outerBevel)" stroke-width="8" />
+
+  <!-- Inner card surface + ambient top glow -->
+  <g clip-path="url(#innerCardClip)">
+    <rect x="98" y="98" width="828" height="828" fill="url(#cardBg)" />
+    <rect x="98" y="98" width="828" height="828" fill="url(#topSplash)" />
+    <rect x="98" y="98" width="828" height="828" fill="url(#topSheen)" />
+  </g>
+
+  <!-- Inner card top-lit monochrome bevel -->
+  <rect x="98" y="98" width="828" height="828" rx="184" fill="none" stroke="url(#innerBevel)" stroke-width="7" />
+
+  <!-- 270-degree recessed background track arc (center 512, 524; radius 298) -->
+  <path
+    d="M 301.3 734.7 A 298 298 0 1 1 722.7 734.7"
+    fill="none"
+    stroke="#28282d"
+    stroke-width="38"
+    stroke-linecap="round"
+  />
+
+  <!-- Crisp active white arc (-135 deg to +65 deg) -->
+  <path
+    d="M 301.3 734.7 A 298 298 0 1 1 782.1 398.1"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="38"
+    stroke-linecap="round"
+  />
+
+  <!-- Matte-black rotary knob body -->
+  <g filter="url(#knobShadow)">
+    <circle
+      cx="512"
+      cy="524"
+      r="228"
+      fill="url(#knobFace)"
+      stroke="#34343c"
+      stroke-width="10"
+    />
+  </g>
+
+  <!-- Subtle light knurl ring matching in-app black knobs -->
+  <circle
+    cx="512"
+    cy="524"
+    r="212"
+    fill="none"
+    stroke="#ffffff"
+    stroke-opacity="0.16"
+    stroke-width="9"
+    stroke-dasharray="7 18"
+  />
+
+  <!-- Crisp white radial pointer notch aligned to +65 deg -->
+  <g transform="rotate(65 512 524)">
+    <line
+      x1="512"
+      y1="308"
+      x2="512"
+      y2="394"
+      stroke="#ffffff"
+      stroke-width="24"
+      stroke-linecap="round"
+    />
+  </g>
+</svg>

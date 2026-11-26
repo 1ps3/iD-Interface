@@ -1,0 +1,17 @@
+# Rust / Tauri build artifacts
+/src-tauri/target/
+/target/
+*.pdb
+
+# OS & editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+.vscode/
+.idea/
+
+# Internal / local-only notes (not part of the public repo)
+GEMINI.md
+docs/reddit-post-draft.md
+docs/theme-showcase.html

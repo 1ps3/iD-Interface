@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>iD Interface</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="appShell" class="app-shell mode-full">
+    <!-- COMPACT FLOATING HARDWARE WIDGET MODE (Stealth Obsidian iD2 Faceplate) -->
+    <div id="compactView" class="compact-view">
+      <div id="compactScaler" class="compact-hw-scaler"></div>
+
+      <!-- Hover-revealed window chrome -->
+      <div class="compact-chrome">
+        <button id="btnPinCompact" class="compact-chrome-btn active" title="Pinned (Always on Top)">
+          <svg class="pin-svg" width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9.5 2.5L13.5 6.5L11 9L11.5 11.5L9.5 13.5L6.5 10.5L2.5 13.5L5.5 9.5L2.5 6.5L4.5 4.5L7 5L9.5 2.5Z" />
+          </svg>
+        </button>
+        <button id="btnExpand" class="compact-chrome-btn" title="Expand to Full Console">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9.5 6.5L13.5 2.5M10 2.5H13.5V6" />
+            <path d="M6.5 9.5L2.5 13.5M6 13.5H2.5V10" />
+          </svg>
+        </button>
+        <button id="btnCloseCompact" class="compact-chrome-btn close-btn" title="Hide to Tray">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <path d="M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Corner-only locked-aspect proportional resize handle -->
+      <div id="compactCornerGrip" class="compact-corner-grip" title="Drag corner to resize proportionally">
+        <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <path d="M3 10L10 3M7 10L10 7" />
+        </svg>
+      </div>
+    </div>
+
+    <!-- FULL STUDIO CONSOLE MODE -->
+    <div class="full-view">
+      <header class="topbar" data-tauri-drag-region="deep">
+        <div class="topbar-left">
+          <span id="brandModel" class="brand-model">NO DEVICE</span>
+          <div class="topbar-telemetry">
+            <button type="button" id="srPill" class="telemetry-pill telemetry-btn" title="Change Sample Rate">—</button>
+            <button type="button" id="bufPill" class="telemetry-pill telemetry-btn" title="Change Buffer Size">—</button>
+            <button type="button" id="clkPill" class="telemetry-pill telemetry-btn" title="Change Clock Source">—</button>
+          </div>
+        </div>
+
+        <nav class="top-nav-tabs" aria-label="Console Sections">
+          <button class="nav-item active" data-tab="mixer">MIXER</button>
+          <button class="nav-item" data-tab="preamps">PREAMPS</button>
+          <button class="nav-item" data-tab="monitoring">MONITORING</button>
+          <button class="nav-item" data-tab="routing">ROUTING</button>
+          <button class="nav-item" data-tab="settings">SETTINGS</button>
+        </nav>
+
+        <div class="topbar-right">
+          <button id="btnPin" class="icon-btn" title="Pin Always on Top">
+            <svg class="pin-svg" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9.5 2.5L13.5 6.5L11 9L11.5 11.5L9.5 13.5L6.5 10.5L2.5 13.5L5.5 9.5L2.5 6.5L4.5 4.5L7 5L9.5 2.5Z" />
+            </svg>
+          </button>
+          <button id="btnCollapse" class="icon-btn" title="Collapse to Compact Widget">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2.5 2.5L6.5 6.5M6.5 3V6.5H3" />
+              <path d="M13.5 13.5L9.5 9.5M9.5 13V9.5H13" />
+            </svg>
+          </button>
+          <button id="btnMin" class="icon-btn" title="Minimize">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <line x1="3" y1="8.5" x2="13" y2="8.5" />
+            </svg>
+          </button>
+          <button id="btnMax" class="icon-btn" title="Maximize">
+            <svg class="ico-max" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+              <rect x="2.75" y="2.75" width="10.5" height="10.5" rx="1.6" />
+            </svg>
+            <svg class="ico-restore" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2.5" y="4.5" width="8.5" height="8.5" rx="1.3" />
+              <path d="M5.5 4.5V3.4C5.5 2.9 5.9 2.5 6.4 2.5H12.6C13.1 2.5 13.5 2.9 13.5 3.4V9.6C13.5 10.1 13.1 10.5 12.6 10.5H11" />
+            </svg>
+          </button>
+          <button id="btnCloseFull" class="icon-btn close-btn" title="Close">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <path d="M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="console-body">
+        <main class="workspace">
+          <section class="view-pane active" data-pane="mixer" id="paneMixer"></section>
+          <section class="view-pane" data-pane="preamps" id="panePreamps"></section>
+          <section class="view-pane" data-pane="monitoring" id="paneMonitoring"></section>
+          <section class="view-pane" data-pane="routing" id="paneRouting"></section>
+          <section class="view-pane" data-pane="settings" id="paneSettings"></section>
+        </main>
+
+        <aside id="masterDock" class="master-dock"></aside>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

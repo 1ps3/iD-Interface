@@ -1,0 +1,23 @@
+[package]
+name = "id-interface"
+version = "0.1.0"
+description = "Studio console and floating desktop controller for Audient iD interfaces"
+authors = ["1ps3"]
+license = "MIT"
+repository = "https://github.com/1ps3/iD-Interface"
+edition = "2021"
+
+[lib]
+name = "id_interface_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
+tauri-plugin-single-instance = "2"
+tokio = { version = "1", features = ["full"] }
+mdns-sd = "0.13"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
