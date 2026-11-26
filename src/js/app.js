@@ -1,7 +1,7 @@
 // Main frontend orchestrator: Compact Widget <-> Full iD2 MK3 Studio Console
 
 import { store, pathKey } from "./store.js";
-import { applyThemeToDocument, applyGlassTintMode } from "./themes.js";
+import { applyThemeToDocument } from "./themes.js";
 import { checkForGithubUpdate } from "./updater.js";
 import { initCustomSelects, openCustomMenu } from "./components/select.js";
 import { createCompactWidget } from "./views/compact.js";
@@ -593,7 +593,6 @@ store.onParam((changedPath) => {
 store.onUiPrefs((prefs) => {
   const themeId = typeof prefs.theme === "string" ? prefs.theme : isMacOS ? "liquidglass" : "obsidian";
   applyThemeToDocument(themeId);
-  applyGlassTintMode(typeof prefs.glassTintMode === "string" ? prefs.glassTintMode : "auto");
   compactWidget.refreshTheme();
   if (typeof prefs.rmsMeters === "boolean") {
     document.documentElement.dataset.rms = prefs.rmsMeters ? "on" : "off";

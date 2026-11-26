@@ -163,9 +163,23 @@ function drawBarsCanvas(canvas, ctx, channels) {
 
   // Theme-aware meter trough & vertical gradient
   const theme = document.documentElement.dataset.theme || "obsidian";
+  const isLight = document.documentElement.dataset.lightUi === "true";
+  const isGlass = theme === "liquidglass";
   const showRms = document.documentElement.dataset.rms !== "off";
-  const troughBorderCol = theme === "daylight" ? "#cbd0dc" : "#262626";
-  const troughInnerCol = theme === "daylight" ? "#e5e8ef" : "#121212";
+  const troughBorderCol = isGlass
+    ? isLight
+      ? "rgba(25, 35, 55, 0.14)"
+      : "rgba(255, 255, 255, 0.16)"
+    : isLight
+      ? "#cbd0dc"
+      : "#262626";
+  const troughInnerCol = isGlass
+    ? isLight
+      ? "rgba(20, 30, 50, 0.15)"
+      : "rgba(255, 255, 255, 0.11)"
+    : isLight
+      ? "#e5e8ef"
+      : "#121212";
   const peakTickCol = theme === "mono" ? "#ffffff" : theme === "prism" ? "#ff3d77" : "#ff5a52";
 
   const grad = ctx.createLinearGradient(0, barTop + barH, 0, barTop);

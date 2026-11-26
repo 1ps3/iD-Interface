@@ -93,7 +93,6 @@ const reduceTransQuery =
 
 let currentMacAccentCode = null;
 let systemReduceTransparency = Boolean(reduceTransQuery && reduceTransQuery.matches);
-let userGlassTintPref = "auto"; // "auto" | "clear" | "tinted"
 
 function applyMacAccentVars() {
   const isLight = document.documentElement.dataset.glassScheme === "light";
@@ -105,17 +104,10 @@ function applyMacAccentVars() {
 
 function syncGlassTintAttr() {
   const effective =
-    userGlassTintPref === "clear" || userGlassTintPref === "tinted"
-      ? userGlassTintPref
-      : systemReduceTransparency || Boolean(reduceTransQuery && reduceTransQuery.matches)
-        ? "tinted"
-        : "clear";
+    systemReduceTransparency || Boolean(reduceTransQuery && reduceTransQuery.matches)
+      ? "tinted"
+      : "clear";
   document.documentElement.dataset.glassTint = effective;
-}
-
-export function applyGlassTintMode(mode) {
-  userGlassTintPref = mode === "clear" || mode === "tinted" ? mode : "auto";
-  syncGlassTintAttr();
 }
 
 export async function refreshSystemAccent() {
