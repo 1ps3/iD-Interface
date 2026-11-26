@@ -6637,6 +6637,87 @@ html.is-snapped body {
   --wave-accent: #e0e0e6 !important;
 }
 
+/* Monochrome card top glows (replace teal/purple/pink with subtle white) */
+:root[data-theme="mono"] .routing-card,
+:root[data-theme="mono"] .dsp-card,
+:root[data-theme="mono"] .dsp-card.comp-card,
+:root[data-theme="mono"] .preamp-card,
+:root[data-theme="mono"] .roomtune-stage {
+  background:
+    radial-gradient(70% 68px at 50% 0px, rgba(255, 255, 255, 0.055) 0%, transparent 100%),
+    var(--bg-card);
+}
+
+/* Monochrome switches, green-active pills, routing & loopback selections */
+:root[data-theme="mono"] .switch-toggle.on {
+  background: #ffffff;
+  border-color: #ffffff;
+}
+
+:root[data-theme="mono"] .switch-toggle.on::after {
+  background: #0b0b0d;
+}
+
+:root[data-theme="mono"] .mini-pill-btn.green-active.active,
+:root[data-theme="mono"] .mini-pill-btn.danger-active.active,
+:root[data-theme="mono"] .mon-btn.danger-active.active,
+:root[data-theme="mono"] .ms-btn.mute-btn.active,
+:root[data-theme="mono"] .ms-btn.solo-btn.active,
+:root[data-theme="mono"] .mini-pill-btn.solo-pill.active,
+:root[data-theme="mono"] .mon-btn.solo-btn.active,
+:root[data-theme="mono"] .sg-status-pill.running,
+:root[data-theme="mono"] .hw-mem-btn.is-confirmed,
+:root[data-theme="mono"] .tone-btn.active,
+:root[data-theme="mono"] .orbit-btn.active {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #0b0b0d !important;
+}
+
+:root[data-theme="mono"] .lb-src-btn.active,
+:root[data-theme="mono"] .mini-pill-btn.ab-btn.active,
+:root[data-theme="mono"] .rt-layout-badge,
+:root[data-theme="mono"] .signal-rt-tag,
+:root[data-theme="mono"] .update-avail-pill {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.55) !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="mono"] .lb-src-btn.active .rm-dot-indicator,
+:root[data-theme="mono"] .rm-dot.active {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.16);
+}
+
+:root[data-theme="mono"] .eq-band-pill.active,
+:root[data-theme="mono"] .preamp-eq-band-tile.active {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="mono"] .rt-beam.beam-ear,
+:root[data-theme="mono"] .rt-beam.beam-height,
+:root[data-theme="mono"] .rt-beam.beam-sub {
+  stroke: rgba(255, 255, 255, 0.3);
+}
+
+:root[data-theme="mono"] .rt-beam.selected {
+  stroke: rgba(255, 255, 255, 0.88) !important;
+}
+
+:root[data-theme="mono"] .rt-leg-dot,
+:root[data-theme="mono"] .tray-status-dot.connected {
+  background: #ffffff !important;
+}
+
+:root[data-theme="mono"] .rt-profile-save-btn:hover {
+  background: #ffffff;
+  color: #0b0b0d;
+}
+
 /* --- 04 · PRISM STUDIO (HIGH-COLOR DEEP INDIGO) --- */
 :root[data-theme="prism"] {
   --bg-shell: #0a0b14;
