@@ -2103,6 +2103,140 @@ async fn quit_app(
 }
 
 #[tauri::command]
+async fn install_app_update(
+    portable_url: String,
+    setup_url: String,
+    fallback_url: String,
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+        let allowed = |u: &str| {
+            u.starts_with("https://github.com/1ps3/iD-Interface/")
+                || u.starts_with("https://objects.githubusercontent.com/")
+        };
+
+        let cur_exe = std::env::current_exe().map_err(|e| format!("current_exe failed: {e}"))?;
+        let cur_dir = cur_exe.parent().ok_or("missing exe dir")?;
+        let in_prog_files = cur_exe
+            .to_string_lossy()
+            .to_ascii_lowercase()
+            .contains("\\program files");
+
+        // Flush config & hardware boot state before replacing/restarting
+        {
+            let mut st = state.store.lock().await;
+            if let Some(w) = app.get_webview_window("main") {
+                capture_current_window_bounds(&w, &mut st.config);
+            }
+            st.save_current_config();
+        }
+        let _ = state.cmd_tx.send(OutboundPropertyChange {
+            path: Vec::new(),
+            prop: "__hw_save_boot".to_string(),
+            value: JuceVar::Int(1),
+        });
+
+        // Portable mode: download new exe next to current exe, swap & relaunch automatically
+        if !in_prog_files && allowed(&portable_url) {
+            let new_exe = cur_dir.join("id-interface.exe.update");
+            let url_esc = portable_url.replace('\'', "''");
+            let out_esc = new_exe.to_string_lossy().replace('\'', "''");
+            let dl = tokio::task::spawn_blocking(move || {
+                std::process::Command::new("powershell")
+                    .args([
+                        "-NoProfile",
+                        "-NonInteractive",
+                        "-Command",
+                        &format!(
+                            "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '{}' -OutFile '{}'",
+                            url_esc, out_esc
+                        ),
+                    ])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status()
+            })
+            .await
+            .map_err(|e| format!("download join error: {e}"))?
+            .map_err(|e| format!("download failed: {e}"))?;
+
+            if !dl.success() {
+                let _ = std::fs::remove_file(&new_exe);
+                return Err("Failed to download update binary".into());
+            }
+            // Sanity-check valid PE executable header ("MZ") & non-trivial size
+            let meta = std::fs::metadata(&new_exe).map_err(|e| format!("stat failed: {e}"))?;
+            let header = std::fs::read(&new_exe)
+                .map(|b| b.len() >= 2 && b[0] == b'M' && b[1] == b'Z')
+                .unwrap_or(false);
+            if meta.len() < 500_000 || !header {
+                let _ = std::fs::remove_file(&new_exe);
+                return Err("Downloaded file is not a valid Windows executable".into());
+            }
+
+            let cur_str = cur_exe.to_string_lossy().to_string();
+            let new_str = new_exe.to_string_lossy().to_string();
+            let script = format!(
+                "timeout /t 1 /nobreak >nul & move /Y \"{}\" \"{}\" >nul & start \"\" \"{}\"",
+                new_str, cur_str, cur_str
+            );
+            std::process::Command::new("cmd")
+                .args(["/C", &script])
+                .creation_flags(CREATE_NO_WINDOW)
+                .spawn()
+                .map_err(|e| format!("Failed to spawn updater: {e}"))?;
+
+            tokio::time::sleep(Duration::from_millis(80)).await;
+            app.exit(0);
+            return Ok(());
+        }
+
+        // Installed copy (Program Files): download & launch the NSIS installer directly
+        if allowed(&setup_url) {
+            let tmp_setup = std::env::temp_dir().join("iD-Interface-setup.exe");
+            let url_esc = setup_url.replace('\'', "''");
+            let out_esc = tmp_setup.to_string_lossy().replace('\'', "''");
+            let dl = tokio::task::spawn_blocking(move || {
+                std::process::Command::new("powershell")
+                    .args([
+                        "-NoProfile",
+                        "-NonInteractive",
+                        "-Command",
+                        &format!(
+                            "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '{}' -OutFile '{}'",
+                            url_esc, out_esc
+                        ),
+                    ])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status()
+            })
+            .await
+            .map_err(|e| format!("download join error: {e}"))?
+            .map_err(|e| format!("download failed: {e}"))?;
+
+            if dl.success() && tmp_setup.exists() {
+                let _ = std::process::Command::new(&tmp_setup).spawn();
+                tokio::time::sleep(Duration::from_millis(80)).await;
+                app.exit(0);
+                return Ok(());
+            }
+        }
+
+        open_external_url(fallback_url).await
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = (portable_url, setup_url, app, state);
+        open_external_url(fallback_url).await
+    }
+}
+
+#[tauri::command]
 async fn open_external_url(url: String) -> Result<(), String> {
     if !url.starts_with("https://") && !url.starts_with("http://") {
         return Err("Only http/https URLs are allowed".into());
@@ -3180,6 +3314,7 @@ pub fn run() {
             toggle_fullscreen_window,
             hide_to_tray,
             quit_app,
+            install_app_update,
             open_external_url,
             get_tray_menu_state,
             hide_tray_menu,

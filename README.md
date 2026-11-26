@@ -42,9 +42,9 @@ Collapse the full console into a resizable, always-on-top hardware faceplate for
 
 ## What's New & Key Features
 
-### Standalone Direct USB on Windows + Native macOS Menu Bar
-* **Direct USB Engine (Windows — No ADM / Bonjour Required):** Talks directly to Audient's USB audio driver (`audientusbaudioapi_x64.dll`) with live two-way hardware sync, 30fps metering, real hardware compressor gain reduction, and full buffer-size support (`16–2048` samples) — zero background `AudientDeviceManager` needed. You can still toggle back to ADM mode anytime in Settings.
-* **macOS Universal Support (Apple Silicon & Intel):** Syncs two-way over mDNS/TCP/UDP with `AudientDeviceManager`, auto-detects your connected iD model, and hides cleanly into the **top Menu Bar** (removing itself from the Dock until reopened).
+### Standalone Direct USB on Windows & macOS — No ADM Required
+* **Direct USB Engine (Windows & macOS — Zero Audient Software Needed):** Talks directly to your **iD1 / iD2 / iD2+ / iD4+** over USB (TUSBAudio driver on Windows, native IOKit on macOS alongside CoreAudio) with live two-way hardware sync, 30fps metering, real hardware compressor gain reduction, and full DSP — zero background `AudientDeviceManager` or Bonjour needed. You can still toggle back to ADM mode anytime in Settings.
+* **macOS Native Experience (Apple Silicon & Intel Universal):** Includes an adaptive **Liquid Glass** theme (auto-syncs with macOS Light/Dark mode) and hides cleanly into the **top Menu Bar** (removing itself from the Dock until reopened).
 * **System Tray & First-Close Prompt:** The first time you press `×`, choose whether to minimize to the **System Tray** (Windows) / **Top Menu Bar** (macOS) or quit — and toggle anytime in Settings.
 
 ### Full Studio Console & Hardware DSP

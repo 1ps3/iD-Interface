@@ -700,7 +700,175 @@ mod transport {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
+mod transport {
+    use std::ffi::{c_char, c_int, c_void, CStr};
+
+    extern "C" {
+        fn macos_usb_open_mk3(out_name: *mut c_char, out_name_len: c_int) -> *mut c_void;
+        fn macos_usb_close(handle: *mut c_void);
+        fn macos_usb_vendor_in(
+            handle: *mut c_void,
+            b_req: u8,
+            entity: u8,
+            w_value: u16,
+            buf: *mut u8,
+            len: u16,
+            out_len: *mut u32,
+        ) -> c_int;
+        fn macos_usb_vendor_out(
+            handle: *mut c_void,
+            b_req: u8,
+            entity: u8,
+            w_value: u16,
+            buf: *const u8,
+            len: u16,
+        ) -> c_int;
+    }
+
+    pub fn is_driver_dll_available() -> bool {
+        true
+    }
+
+    pub struct TusbApi;
+
+    impl TusbApi {
+        pub fn load() -> Result<Self, String> {
+            Ok(Self)
+        }
+
+        pub fn open_first(&self) -> Result<TusbDevice<'_>, String> {
+            let mut name_buf = [0u8; 128];
+            let handle = unsafe {
+                macos_usb_open_mk3(name_buf.as_mut_ptr() as *mut c_char, name_buf.len() as c_int)
+            };
+            if handle.is_null() {
+                return Err("No supported Audient MK3 device (iD1, iD2, iD2+, iD4+) detected".into());
+            }
+            let raw_name = unsafe { CStr::from_ptr(name_buf.as_ptr() as *const c_char) }
+                .to_string_lossy()
+                .trim()
+                .to_string();
+            let model_name = raw_name
+                .strip_prefix("Audient ")
+                .or_else(|| raw_name.strip_prefix("AUDIENT "))
+                .unwrap_or(&raw_name)
+                .trim()
+                .to_string();
+            let dev = TusbDevice {
+                _marker: std::marker::PhantomData,
+                handle,
+                model_name: if model_name.is_empty() {
+                    "Audient".into()
+                } else {
+                    model_name
+                },
+            };
+            // Verify control endpoint is awake before reporting ready
+            if dev.vendor_in(0x01, 0x00, 0x0200, 4).is_err() {
+                return Err("Audient MK3 device still initializing".into());
+            }
+            Ok(dev)
+        }
+    }
+
+    pub struct TusbDevice<'a> {
+        _marker: std::marker::PhantomData<&'a ()>,
+        handle: *mut c_void,
+        model_name: String,
+    }
+
+    unsafe impl<'a> Send for TusbDevice<'a> {}
+
+    impl<'a> Drop for TusbDevice<'a> {
+        fn drop(&mut self) {
+            if !self.handle.is_null() {
+                unsafe {
+                    macos_usb_close(self.handle);
+                }
+                self.handle = std::ptr::null_mut();
+            }
+        }
+    }
+
+    impl<'a> TusbDevice<'a> {
+        pub fn vendor_in(
+            &self,
+            b_req: u8,
+            entity: u8,
+            w_value: u16,
+            len: u16,
+        ) -> Result<Vec<u8>, u32> {
+            let mut buf = vec![0u8; len as usize];
+            let mut ret: u32 = 0;
+            let st = unsafe {
+                macos_usb_vendor_in(
+                    self.handle,
+                    b_req,
+                    entity,
+                    w_value,
+                    buf.as_mut_ptr(),
+                    len,
+                    &mut ret,
+                )
+            };
+            if st != 0 {
+                return Err(st as u32);
+            }
+            buf.truncate((ret as usize).min(buf.len()));
+            Ok(buf)
+        }
+
+        pub fn vendor_out(
+            &self,
+            b_req: u8,
+            entity: u8,
+            w_value: u16,
+            data: &[u8],
+        ) -> Result<(), u32> {
+            let st = unsafe {
+                macos_usb_vendor_out(
+                    self.handle,
+                    b_req,
+                    entity,
+                    w_value,
+                    data.as_ptr(),
+                    data.len() as u16,
+                )
+            };
+            if st != 0 {
+                return Err(st as u32);
+            }
+            Ok(())
+        }
+
+        pub fn get_sample_rate(&self) -> Option<u32> {
+            self.vendor_in(0x01, 0x00, 0x0200, 4)
+                .ok()
+                .filter(|b| b.len() >= 4)
+                .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+                .filter(|&sr| sr > 0)
+        }
+
+        pub fn set_sample_rate(&self, sr: u32) -> Result<(), u32> {
+            self.vendor_out(0x01, 0x00, 0x0200, &sr.to_le_bytes())
+        }
+
+        pub fn set_clock_source(&self, _clk_id: u32) -> Result<(), u32> {
+            Ok(())
+        }
+
+        pub fn set_asio_buffer_size(&self, _samples: u32) -> Result<(), u32> {
+            Ok(())
+        }
+
+        pub fn detect_model_name(&self) -> String {
+            self.model_name.clone()
+        }
+    }
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 mod transport {
     pub struct TusbApi;
     pub struct TusbDevice<'a>(std::marker::PhantomData<&'a ()>);

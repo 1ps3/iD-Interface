@@ -1726,8 +1726,9 @@ dependencies = [
 
 [[package]]
 name = "id-interface"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
+ "cc",
  "mdns-sd",
  "serde",
  "serde_json",

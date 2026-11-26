@@ -504,17 +504,36 @@ window.__TAURI__?.event?.listen("backend-info", (e) => {
     topbarDot.title = store.connected ? `Connected via ${activeEngineLabel}` : `Waiting for ${activeEngineLabel}…`;
   }
 });
-function showTopbarUpdateBadge(latestVersion, downloadUrl) {
+function showTopbarUpdateBadge(res) {
   const rightBar = document.querySelector(".topbar-right");
   if (!rightBar || rightBar.querySelector("#btnUpdatePill")) return;
   const pill = document.createElement("button");
   pill.type = "button";
   pill.id = "btnUpdatePill";
   pill.className = "telemetry-pill update-avail-pill";
-  pill.textContent = `UPDATE v${latestVersion}`;
-  pill.title = `Download iD Interface v${latestVersion} from GitHub Releases`;
-  pill.addEventListener("click", () => {
-    invoke("open_external_url", { url: downloadUrl }).catch(() => {});
+  pill.textContent = `UPDATE v${res.latestVersion}`;
+  pill.title = isMacOS
+    ? `Download iD Interface v${res.latestVersion}`
+    : `Download, install & restart to iD Interface v${res.latestVersion}`;
+  pill.addEventListener("click", async () => {
+    if (pill.disabled) return;
+    if (isMacOS) {
+      invoke("open_external_url", { url: res.downloadUrl }).catch(() => {});
+      return;
+    }
+    pill.disabled = true;
+    pill.textContent = "UPDATING…";
+    try {
+      await invoke("install_app_update", {
+        portableUrl: res.portableUrl || "",
+        setupUrl: res.setupUrl || "",
+        fallbackUrl: res.downloadUrl || res.releaseUrl || "",
+      });
+    } catch {
+      pill.disabled = false;
+      pill.textContent = `UPDATE v${res.latestVersion}`;
+      invoke("open_external_url", { url: res.downloadUrl || res.releaseUrl }).catch(() => {});
+    }
   });
   rightBar.prepend(pill);
 }
@@ -534,7 +553,7 @@ invoke("get_backend_info")
     setTimeout(async () => {
       const res = await checkForGithubUpdate(appVersion, isMacOS);
       if (res.status === "available" && res.downloadUrl) {
-        showTopbarUpdateBadge(res.latestVersion, res.downloadUrl);
+        showTopbarUpdateBadge(res);
       }
     }, 4000);
   })

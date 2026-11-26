@@ -231,7 +231,7 @@ export function createSettingsView(container, store, callbacks = {}) {
             const directOpt = selEngine.querySelector('option[value="direct_usb"]');
             if (directOpt) {
               directOpt.disabled = true;
-              directOpt.textContent = "Direct USB (Windows Only)";
+              directOpt.textContent = "Direct USB (Unavailable)";
             }
           }
           syncPlatformSettingsUi();
@@ -681,7 +681,24 @@ export function createSettingsView(container, store, callbacks = {}) {
 
     btnCheckUpdates?.addEventListener("click", async () => {
       if (lastUpdateCheck?.status === "available" && lastUpdateCheck.downloadUrl && invoke) {
-        invoke("open_external_url", { url: lastUpdateCheck.downloadUrl }).catch(() => {});
+        if (isMacOS) {
+          invoke("open_external_url", { url: lastUpdateCheck.downloadUrl }).catch(() => {});
+          return;
+        }
+        btnCheckUpdates.disabled = true;
+        btnCheckUpdates.textContent = "UPDATING…";
+        if (updateStatusDesc) updateStatusDesc.textContent = `Downloading v${lastUpdateCheck.latestVersion} & restarting…`;
+        try {
+          await invoke("install_app_update", {
+            portableUrl: lastUpdateCheck.portableUrl || "",
+            setupUrl: lastUpdateCheck.setupUrl || "",
+            fallbackUrl: lastUpdateCheck.downloadUrl || lastUpdateCheck.releaseUrl || "",
+          });
+        } catch {
+          btnCheckUpdates.disabled = false;
+          btnCheckUpdates.textContent = "UPDATE";
+          invoke("open_external_url", { url: lastUpdateCheck.downloadUrl }).catch(() => {});
+        }
         return;
       }
       btnCheckUpdates.textContent = "CHECKING…";
@@ -689,7 +706,7 @@ export function createSettingsView(container, store, callbacks = {}) {
       lastUpdateCheck = res;
       if (updateStatusDesc) updateStatusDesc.textContent = res.message;
       if (res.status === "available") {
-        btnCheckUpdates.textContent = "DOWNLOAD";
+        btnCheckUpdates.textContent = isMacOS ? "DOWNLOAD" : "UPDATE";
         btnCheckUpdates.classList.add("is-confirmed", "is-pulsing");
       } else if (res.status === "up_to_date") {
         animateMemBtn(btnCheckUpdates, "CHECK", "LATEST ✓", true);

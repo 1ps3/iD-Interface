@@ -23,18 +23,26 @@ export function isNewerVersion(latest, current) {
   return false;
 }
 
-export function pickAssetUrl(release, isMac) {
+export function pickAssetUrls(release, isMac) {
   const assets = Array.isArray(release?.assets) ? release.assets : [];
+  const releaseUrl = release?.html_url || "";
   if (isMac) {
     const dmg = assets.find((a) => /\.dmg$/i.test(a.name || ""));
-    if (dmg?.browser_download_url) return dmg.browser_download_url;
-  } else {
-    const setup = assets.find((a) => /setup\.exe$/i.test(a.name || ""));
-    if (setup?.browser_download_url) return setup.browser_download_url;
-    const exe = assets.find((a) => /\.exe$/i.test(a.name || ""));
-    if (exe?.browser_download_url) return exe.browser_download_url;
+    return {
+      downloadUrl: dmg?.browser_download_url || releaseUrl,
+      portableUrl: "",
+      setupUrl: "",
+    };
   }
-  return release?.html_url || "";
+  const setup = assets.find((a) => /setup\.exe$/i.test(a.name || ""));
+  const portable = assets.find(
+    (a) => /\.exe$/i.test(a.name || "") && !/setup\.exe$/i.test(a.name || "")
+  );
+  return {
+    downloadUrl: setup?.browser_download_url || portable?.browser_download_url || releaseUrl,
+    portableUrl: portable?.browser_download_url || "",
+    setupUrl: setup?.browser_download_url || "",
+  };
 }
 
 export async function checkForGithubUpdate(currentVersion, isMac = false, repoOverride = "") {
@@ -69,7 +77,7 @@ export async function checkForGithubUpdate(currentVersion, isMac = false, repoOv
     }
     const rel = await res.json();
     const tag = String(rel.tag_name || "").replace(/^v/i, "");
-    const downloadUrl = pickAssetUrl(rel, isMac);
+    const { downloadUrl, portableUrl, setupUrl } = pickAssetUrls(rel, isMac);
     const releaseUrl = rel.html_url || `https://github.com/${repo}/releases/latest`;
     if (tag && isNewerVersion(tag, currentVersion)) {
       return {
@@ -77,6 +85,8 @@ export async function checkForGithubUpdate(currentVersion, isMac = false, repoOv
         currentVersion,
         latestVersion: tag,
         downloadUrl: downloadUrl || releaseUrl,
+        portableUrl,
+        setupUrl,
         releaseUrl,
         notes: rel.name || `v${tag}`,
         message: `Update available: v${tag} (current v${currentVersion})`,
