@@ -103,6 +103,7 @@ export function createMonitoringView(container, store) {
   let selectedEqBandIdx = 0;
   let roomViewMode = "stage"; // "stage" | "eq"
   let linkLrEq = true;
+  let selectedProfileId = "desk_fix";
   let speakerNodeEls = [];
   let stageResizeObs = null;
 
@@ -113,6 +114,81 @@ export function createMonitoringView(container, store) {
     { label: "3", activeType: 8, defF: 1500, defQ: 2.0, color: "#f5b83d" },
     { label: "4", activeType: 8, defF: 4000, defQ: 2.0, color: "#f472b6" },
     { label: "HS", activeType: 7, defF: 8000, defQ: 0.71, color: "#fb923c" },
+  ];
+
+  const BUILTIN_RT_PROFILES = [
+    {
+      id: "flat",
+      name: "Flat (Bypass)",
+      bands: [
+        { t: 11, f: 80, g: 0, q: 0.71 },
+        { t: 11, f: 250, g: 0, q: 2.0 },
+        { t: 11, f: 600, g: 0, q: 2.0 },
+        { t: 11, f: 1500, g: 0, q: 2.0 },
+        { t: 11, f: 4000, g: 0, q: 2.0 },
+        { t: 11, f: 8000, g: 0, q: 0.71 },
+      ],
+    },
+    {
+      id: "desk_fix",
+      name: "Desk Boundary Fix",
+      bands: [
+        { t: 5, f: 75, g: -1.5, q: 0.71 },
+        { t: 8, f: 160, g: -3.2, q: 2.2 },
+        { t: 8, f: 520, g: -1.2, q: 1.8 },
+        { t: 11, f: 1500, g: 0, q: 2.0 },
+        { t: 11, f: 4000, g: 0, q: 2.0 },
+        { t: 7, f: 9000, g: 0.8, q: 0.71 },
+      ],
+    },
+    {
+      id: "nearfield_warm",
+      name: "Nearfield Warmth",
+      bands: [
+        { t: 5, f: 85, g: 1.8, q: 0.71 },
+        { t: 8, f: 220, g: -1.4, q: 1.8 },
+        { t: 11, f: 600, g: 0, q: 2.0 },
+        { t: 11, f: 1500, g: 0, q: 2.0 },
+        { t: 8, f: 3200, g: -1.6, q: 2.0 },
+        { t: 7, f: 10000, g: -0.6, q: 0.71 },
+      ],
+    },
+    {
+      id: "bright_ref",
+      name: "Bright Studio Reference",
+      bands: [
+        { t: 5, f: 90, g: -1.8, q: 0.71 },
+        { t: 8, f: 200, g: -1.5, q: 2.0 },
+        { t: 11, f: 600, g: 0, q: 2.0 },
+        { t: 8, f: 2400, g: 1.0, q: 1.6 },
+        { t: 11, f: 4000, g: 0, q: 2.0 },
+        { t: 7, f: 8000, g: 1.8, q: 0.71 },
+      ],
+    },
+    {
+      id: "small_room",
+      name: "Small Room Bass Tame",
+      bands: [
+        { t: 5, f: 95, g: -3.5, q: 0.71 },
+        { t: 8, f: 140, g: -2.8, q: 2.6 },
+        { t: 8, f: 320, g: -1.6, q: 2.0 },
+        { t: 11, f: 1500, g: 0, q: 2.0 },
+        { t: 11, f: 4000, g: 0, q: 2.0 },
+        { t: 11, f: 8000, g: 0, q: 0.71 },
+      ],
+    },
+    {
+      id: "late_night",
+      name: "Late Night Loudness",
+      bands: [
+        { t: 5, f: 80, g: 2.8, q: 0.71 },
+        { t: 11, f: 250, g: 0, q: 2.0 },
+        { t: 8, f: 1000, g: -1.2, q: 1.2 },
+        { t: 11, f: 1500, g: 0, q: 2.0 },
+        { t: 11, f: 4000, g: 0, q: 2.0 },
+        { t: 7, f: 8500, g: 2.0, q: 0.71 },
+      ],
+    },
   ];
 
   function evalRtBandDb(freq, b) {
@@ -296,11 +372,53 @@ export function createMonitoringView(container, store) {
           </div>
         </div>
         <div class="rt-eq-oled" id="rtEqOled">
-          <svg class="eq-oled-svg" id="rtEqSvg" viewBox="0 0 600 180" preserveAspectRatio="none"></svg>
+          <svg class="eq-oled-svg" id="rtEqSvg" viewBox="0 0 520 150" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="rtEqFillGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="rgba(255,255,255,0.12)" />
+                <stop offset="100%" stop-color="rgba(255,255,255,0.01)" />
+              </linearGradient>
+            </defs>
+            <line x1="69" y1="0" x2="69" y2="150" class="eq-grid-v" vector-effect="non-scaling-stroke" />
+            <line x1="121" y1="0" x2="121" y2="150" class="eq-grid-v" vector-effect="non-scaling-stroke" />
+            <line x1="242" y1="0" x2="242" y2="150" class="eq-grid-v" vector-effect="non-scaling-stroke" />
+            <line x1="294" y1="0" x2="294" y2="150" class="eq-grid-v" vector-effect="non-scaling-stroke" />
+            <line x1="416" y1="0" x2="416" y2="150" class="eq-grid-v" vector-effect="non-scaling-stroke" />
+            <line x1="468" y1="0" x2="468" y2="150" class="eq-grid-v" vector-effect="non-scaling-stroke" />
+            <line x1="0" y1="38" x2="520" y2="38" class="eq-grid-h" vector-effect="non-scaling-stroke" />
+            <line x1="0" y1="75" x2="520" y2="75" class="eq-grid-zero" vector-effect="non-scaling-stroke" />
+            <line x1="0" y1="112" x2="520" y2="112" class="eq-grid-h" vector-effect="non-scaling-stroke" />
+            <g id="rtEqBandFills"></g>
+            <path id="rtEqFillPath" fill="url(#rtEqFillGrad)" />
+            <path id="rtEqCurvePath" fill="none" stroke="#f2f2f2" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+          </svg>
+          <span class="eq-axis-lbl" style="left:6px;top:6px;">+12</span>
+          <span class="eq-axis-lbl" style="left:6px;top:46%;">0</span>
+          <span class="eq-axis-lbl" style="left:6px;bottom:14px;">-12</span>
+          <span class="eq-axis-lbl" style="left:13.2%;bottom:3px;">50</span>
+          <span class="eq-axis-lbl" style="left:23.3%;bottom:3px;">100</span>
+          <span class="eq-axis-lbl" style="left:46.5%;bottom:3px;">500</span>
+          <span class="eq-axis-lbl" style="left:56.5%;bottom:3px;">1k</span>
+          <span class="eq-axis-lbl" style="left:80%;bottom:3px;">5k</span>
+          <span class="eq-axis-lbl" style="left:90%;bottom:3px;">10k</span>
+          <div class="eq-nodes-layer" id="rtEqNodes"></div>
           <div class="eq-oled-readout" id="rtEqReadout"></div>
         </div>
         <div class="rt-eq-band-bar" id="rtEqBandBar"></div>
         <div class="rt-eq-controls" id="rtEqControls"></div>
+        <div class="rt-profile-bar" id="rtProfileBar">
+          <span class="micro-label">EQ PROFILE</span>
+          <select class="dock-select rt-profile-select" id="rtProfileSelect"></select>
+          <div class="rt-profile-preview" title="Selected profile curve preview">
+            <svg id="rtProfilePreviewSvg" viewBox="0 0 140 40" preserveAspectRatio="none">
+              <line x1="0" y1="20" x2="140" y2="20" class="eq-grid-zero" vector-effect="non-scaling-stroke" />
+              <path id="rtProfilePreviewFill" fill="rgba(167, 139, 250, 0.22)" />
+              <path id="rtProfilePreviewCurve" fill="none" stroke="#f2f2f2" stroke-width="1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+            </svg>
+          </div>
+          <button type="button" class="mini-pill-btn green-active" id="btnRtProfApply">APPLY</button>
+          <button type="button" class="mini-pill-btn" id="btnRtProfSave" title="Save current Room EQ curve into selected Custom slot">SAVE</button>
+        </div>
       </div>
 
       <!-- Clean 2.5D Elevation-Coded Acoustic Soundstage -->
@@ -615,15 +733,24 @@ export function createMonitoringView(container, store) {
       spkInspector._syncCurrent = syncSel;
     }
 
-    // --- Manual RoomTune 6-Band Speaker EQ Editor ---
+    // --- Manual RoomTune 6-Band Speaker EQ Editor (Matches Preamps EQ + Profiles) ---
     const rtEqPanel = stageEl.querySelector("#rtEqPanel");
     const rtEqSpkTabs = stageEl.querySelector("#rtEqSpkTabs");
     const rtEqSvg = stageEl.querySelector("#rtEqSvg");
+    const rtEqBandFills = stageEl.querySelector("#rtEqBandFills");
+    const rtEqFillPath = stageEl.querySelector("#rtEqFillPath");
+    const rtEqCurvePath = stageEl.querySelector("#rtEqCurvePath");
+    const rtEqNodes = stageEl.querySelector("#rtEqNodes");
     const rtEqReadout = stageEl.querySelector("#rtEqReadout");
     const rtEqBandBar = stageEl.querySelector("#rtEqBandBar");
     const rtEqControls = stageEl.querySelector("#rtEqControls");
     const btnRtEqLink = stageEl.querySelector("#btnRtEqLink");
     const btnRtEqFlat = stageEl.querySelector("#btnRtEqFlat");
+    const rtProfileSelect = stageEl.querySelector("#rtProfileSelect");
+    const rtProfilePreviewFill = stageEl.querySelector("#rtProfilePreviewFill");
+    const rtProfilePreviewCurve = stageEl.querySelector("#rtProfilePreviewCurve");
+    const btnRtProfApply = stageEl.querySelector("#btnRtProfApply");
+    const btnRtProfSave = stageEl.querySelector("#btnRtProfSave");
 
     stageEl.querySelectorAll("#rtViewModeSeg .seg-btn").forEach((b) => {
       b.addEventListener("click", () => {
@@ -647,10 +774,140 @@ export function createMonitoringView(container, store) {
       }
     };
 
-    const freqToX = (f) => ((Math.log10(Math.max(20, Math.min(20000, f))) - Math.log10(20)) / (Math.log10(20000) - Math.log10(20))) * 600;
-    const xToFreq = (x) => Math.round(20 * Math.pow(1000, Math.max(0, Math.min(1, x / 600))));
-    const dbToY = (db) => 90 - (Math.max(-12, Math.min(12, db)) / 12) * 76;
-    const yToDb = (y) => Math.round(Math.max(-12, Math.min(12, ((90 - y) / 76) * 12)) * 10) / 10;
+    const freqToX = (f) => (Math.log(Math.max(20, Math.min(20000, f)) / 20) / Math.log(1000)) * 520;
+    const xToFreq = (x) => Math.round(20 * Math.pow(1000, Math.max(0, Math.min(1, x / 520))));
+    const dbToY = (db) => 75 - (Math.max(-14, Math.min(14, db)) / 14) * 64;
+    const yToDb = (y) => Math.round(Math.max(-12, Math.min(12, ((75 - y) / 64) * 14)) * 10) / 10;
+
+    const RT_EQ_GRID = [];
+    for (let x = 0; x <= 520; x += 4) RT_EQ_GRID.push({ x, freq: xToFreq(x) });
+    if (RT_EQ_GRID[RT_EQ_GRID.length - 1].x !== 520) RT_EQ_GRID.push({ x: 520, freq: 20000 });
+
+    const rtBandFillEls = RT_EQ_BAND_META.map((m) => {
+      const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      p.setAttribute("fill", m.color);
+      rtEqBandFills?.appendChild(p);
+      return p;
+    });
+
+    let draggingRtIdx = -1;
+    const rtNodeEls = RT_EQ_BAND_META.map((m, idx) => {
+      const dot = document.createElement("button");
+      dot.type = "button";
+      dot.className = "eq-dot";
+      dot.style.setProperty("--dot-col", m.color);
+      dot.textContent = m.label;
+      rtEqNodes?.appendChild(dot);
+
+      let dragRect = null;
+      dot.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        selectedEqBandIdx = idx;
+        const s = speakers[selectedSpkIdx];
+        if (s?.eqBands[idx] && Number(store.getVal(s.eqBands[idx].tP, 11)) === 11) {
+          setEqBandField(idx, "tP", m.activeType);
+        }
+        draggingRtIdx = idx;
+        dragRect = rtEqSvg.getBoundingClientRect();
+        dot.setPointerCapture(e.pointerId);
+        renderRoomEq();
+      });
+      dot.addEventListener("pointermove", (e) => {
+        if (draggingRtIdx !== idx || !dragRect) return;
+        const sx = ((e.clientX - dragRect.left) / dragRect.width) * 520;
+        const sy = ((e.clientY - dragRect.top) / dragRect.height) * 150;
+        setEqBandField(idx, "fP", xToFreq(sx));
+        setEqBandField(idx, "gP", yToDb(sy));
+        renderRoomEq();
+      });
+      const endDrag = (e) => {
+        if (draggingRtIdx !== idx) return;
+        draggingRtIdx = -1;
+        dragRect = null;
+        if (dot.hasPointerCapture(e.pointerId)) dot.releasePointerCapture(e.pointerId);
+      };
+      dot.addEventListener("pointerup", endDrag);
+      dot.addEventListener("pointercancel", endDrag);
+      return dot;
+    });
+
+    function getAllRtProfiles() {
+      const saved = store.getUiPref("roomEqProfiles", {}) || {};
+      const customs = [1, 2, 3].map((n) => {
+        const id = `custom_${n}`;
+        return {
+          id,
+          name: `Custom Profile ${n}${saved[id] ? " ★" : ""}`,
+          custom: true,
+          bands: Array.isArray(saved[id]) ? saved[id] : BUILTIN_RT_PROFILES[0].bands,
+        };
+      });
+      return [...BUILTIN_RT_PROFILES, ...customs];
+    }
+
+    function renderProfilePreview() {
+      const all = getAllRtProfiles();
+      const prof = all.find((p) => p.id === selectedProfileId) || all[0];
+      if (!prof || !rtProfilePreviewCurve || !rtProfilePreviewFill) return;
+      const pts = [];
+      for (let x = 0; x <= 140; x += 3) {
+        const fr = 20 * Math.pow(1000, x / 140);
+        let sum = 0;
+        for (const b of prof.bands) sum += evalRtBandDb(fr, b);
+        const y = 20 - (Math.max(-12, Math.min(12, sum)) / 12) * 16;
+        pts.push(`${x === 0 ? "M" : "L"}${x} ${y.toFixed(1)}`);
+      }
+      const d = pts.join(" ");
+      rtProfilePreviewCurve.setAttribute("d", d);
+      rtProfilePreviewFill.setAttribute("d", `${d} L140 20 L0 20 Z`);
+      if (btnRtProfSave) btnRtProfSave.style.display = prof.custom ? "" : "none";
+    }
+
+    function syncProfileDropdown() {
+      if (!rtProfileSelect) return;
+      const all = getAllRtProfiles();
+      rtProfileSelect.innerHTML = all
+        .map((p) => `<option value="${p.id}" ${p.id === selectedProfileId ? "selected" : ""}>${p.name}</option>`)
+        .join("");
+      renderProfilePreview();
+    }
+
+    rtProfileSelect?.addEventListener("change", () => {
+      selectedProfileId = rtProfileSelect.value;
+      renderProfilePreview();
+    });
+
+    btnRtProfApply?.addEventListener("click", () => {
+      const all = getAllRtProfiles();
+      const prof = all.find((p) => p.id === selectedProfileId);
+      if (!prof) return;
+      prof.bands.forEach((b, i) => {
+        setEqBandField(i, "tP", b.t);
+        setEqBandField(i, "fP", b.f);
+        setEqBandField(i, "gP", b.g);
+        setEqBandField(i, "qP", b.q);
+      });
+      renderRoomEq();
+    });
+
+    btnRtProfSave?.addEventListener("click", () => {
+      const s = speakers[selectedSpkIdx];
+      if (!s || !s.eqBands.length || !selectedProfileId.startsWith("custom_")) return;
+      const curBands = s.eqBands.map((b, i) => {
+        const meta = RT_EQ_BAND_META[i] || RT_EQ_BAND_META[1];
+        return {
+          t: Number(store.getVal(b.tP, 11)),
+          f: Number(store.getVal(b.fP, meta.defF)),
+          g: Number(store.getVal(b.gP, 0)),
+          q: Number(store.getVal(b.qP, meta.defQ)),
+        };
+      });
+      const saved = { ...(store.getUiPref("roomEqProfiles", {}) || {}), [selectedProfileId]: curBands };
+      store.saveUiPref("roomEqProfiles", saved);
+      syncProfileDropdown();
+    });
+
+    syncProfileDropdown();
 
     function renderRoomEq() {
       const s = speakers[selectedSpkIdx];
@@ -690,78 +947,47 @@ export function createMonitoringView(container, store) {
         };
       });
 
-      // Draw SVG grid, summed curve & draggable nodes
-      const freqs = [50, 100, 200, 500, 1000, 2000, 5000, 10000];
-      let svgHtml = "";
-      for (const fr of freqs) {
-        const x = freqToX(fr).toFixed(1);
-        const lbl = fr >= 1000 ? `${fr / 1000}k` : `${fr}`;
-        svgHtml += `<line x1="${x}" y1="0" x2="${x}" y2="180" class="eq-grid-v" />`;
-        svgHtml += `<text x="${Number(x) + 3}" y="174" class="eq-grid-lbl">${lbl}</text>`;
-      }
-      for (const db of [-6, 0, 6]) {
-        const y = dbToY(db).toFixed(1);
-        svgHtml += `<line x1="0" y1="${y}" x2="600" y2="${y}" class="${db === 0 ? "eq-grid-zero" : "eq-grid-h"}" />`;
+      const compPts = new Array(RT_EQ_GRID.length);
+      const bandPts = bandsState.map(() => new Array(RT_EQ_GRID.length));
+      for (let i = 0; i < RT_EQ_GRID.length; i++) {
+        const { x, freq } = RT_EQ_GRID[i];
+        let totalDb = 0;
+        for (let j = 0; j < bandsState.length; j++) {
+          const bdb = evalRtBandDb(freq, bandsState[j]);
+          totalDb += bdb;
+          bandPts[j][i] = `${i === 0 ? "M" : "L"}${x} ${dbToY(bdb).toFixed(1)}`;
+        }
+        compPts[i] = `${i === 0 ? "M" : "L"}${x} ${dbToY(totalDb).toFixed(1)}`;
       }
 
-      const pts = [];
-      for (let px = 0; px <= 600; px += 4) {
-        const fr = xToFreq(px);
-        let sum = 0;
-        for (const b of bandsState) sum += evalRtBandDb(fr, b);
-        pts.push(`${px},${dbToY(sum).toFixed(1)}`);
-      }
-      svgHtml += `<polyline points="${pts.join(" ")}" fill="none" stroke="#a78bfa" stroke-width="2" />`;
+      rtBandFillEls.forEach((el, j) => {
+        const bs = bandsState[j];
+        const show = bs && bs.t !== 11 && Math.abs(bs.g) > 0.05;
+        el.setAttribute("d", `${bandPts[j].join(" ")} L520 75 L0 75 Z`);
+        el.setAttribute("fill-opacity", show ? (j === selectedEqBandIdx ? "0.18" : "0.07") : "0");
+      });
 
-      for (const b of bandsState) {
-        const cx = freqToX(b.f).toFixed(1);
-        const cy = dbToY(b.t === 11 ? 0 : b.g).toFixed(1);
-        const isSel = b.idx === selectedEqBandIdx;
-        const isByps = b.t === 11;
-        svgHtml += `
-          <g class="eq-node ${isSel ? "selected" : ""} ${isByps ? "bypassed" : ""}" data-rt-node="${b.idx}">
-            <circle cx="${cx}" cy="${cy}" r="12" class="eq-node-hit" />
-            <circle cx="${cx}" cy="${cy}" r="${isSel ? 7 : 5.5}" fill="${b.meta.color}" class="eq-node-dot" />
-            <text x="${cx}" y="${Number(cy) + 2.5}" class="eq-node-num">${b.meta.label}</text>
-          </g>`;
-      }
-      rtEqSvg.innerHTML = svgHtml;
+      const dStr = compPts.join(" ");
+      rtEqCurvePath?.setAttribute("d", dStr);
+      rtEqFillPath?.setAttribute("d", `${dStr} L520 75 L0 75 Z`);
+
+      rtNodeEls.forEach((dot, i) => {
+        const bs = bandsState[i];
+        if (!bs) return;
+        const nx = freqToX(bs.f);
+        const ny = bs.t === 11 ? 75 : dbToY(bs.g);
+        dot.style.left = `${((nx / 520) * 100).toFixed(2)}%`;
+        dot.style.top = `${((ny / 150) * 100).toFixed(2)}%`;
+        dot.classList.toggle("selected", i === selectedEqBandIdx);
+        dot.classList.toggle("bypassed", bs.t === 11);
+      });
 
       const sel = bandsState[selectedEqBandIdx] || bandsState[0];
       if (rtEqReadout && sel) {
         const fTxt = sel.f >= 1000 ? `${(sel.f / 1000).toFixed(2)} kHz` : `${Math.round(sel.f)} Hz`;
-        rtEqReadout.textContent = `${sel.meta.label} · ${fTxt} · ${sel.g >= 0 ? "+" : ""}${sel.g.toFixed(1)} dB · Q ${sel.q.toFixed(2)}`;
+        rtEqReadout.textContent = `${sel.meta.label} · ${fTxt} · ${sel.g >= 0 ? "+" : ""}${sel.g.toFixed(1)} dB · Q${sel.q.toFixed(1)}`;
       }
 
-      // Drag nodes directly on SVG curve
-      rtEqSvg.querySelectorAll("[data-rt-node]").forEach((g) => {
-        g.addEventListener("pointerdown", (e) => {
-          e.preventDefault();
-          const bi = Number(g.dataset.rtNode);
-          selectedEqBandIdx = bi;
-          const meta = RT_EQ_BAND_META[bi] || RT_EQ_BAND_META[1];
-          if (bandsState[bi]?.t === 11) {
-            setEqBandField(bi, "tP", meta.activeType);
-          }
-          const rect = rtEqSvg.getBoundingClientRect();
-          const onMove = (ev) => {
-            const nx = ((ev.clientX - rect.left) / rect.width) * 600;
-            const ny = ((ev.clientY - rect.top) / rect.height) * 180;
-            setEqBandField(bi, "fP", xToFreq(nx));
-            setEqBandField(bi, "gP", yToDb(ny));
-            renderRoomEq();
-          };
-          const onUp = () => {
-            window.removeEventListener("pointermove", onMove);
-            window.removeEventListener("pointerup", onUp);
-          };
-          window.addEventListener("pointermove", onMove);
-          window.addEventListener("pointerup", onUp);
-          renderRoomEq();
-        });
-      });
-
-      // Band selector pills
       if (rtEqBandBar) {
         rtEqBandBar.innerHTML = bandsState
           .map(
@@ -779,7 +1005,6 @@ export function createMonitoringView(container, store) {
         });
       }
 
-      // Selected band controls (ON/OFF, FREQ, GAIN, Q)
       if (rtEqControls && sel) {
         const isOn = sel.t !== 11;
         const fLogVal = Math.round(((Math.log10(sel.f) - Math.log10(20)) / (Math.log10(20000) - Math.log10(20))) * 1000);

@@ -1293,6 +1293,7 @@ export function createMixerView(container, store) {
               <line x1="0" y1="24" x2="380" y2="24" class="eq-grid-h" vector-effect="non-scaling-stroke" />
               <line x1="0" y1="48" x2="380" y2="48" class="eq-grid-zero" vector-effect="non-scaling-stroke" />
               <line x1="0" y1="72" x2="380" y2="72" class="eq-grid-h" vector-effect="non-scaling-stroke" />
+              <g id="ieqBandFills"></g>
               <path id="ieqFillPath" fill="url(#eqFillGrad)" />
               <path id="ieqCurvePath" fill="none" stroke="#f0f0f0" stroke-width="1.8" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
             </svg>
@@ -1339,10 +1340,17 @@ export function createMixerView(container, store) {
       const btnFlat = content.querySelector("#ieqFlat");
       const bandPills = Array.from(content.querySelectorAll("#ieqBandPills .eq-band-pill"));
       const svgEl = content.querySelector("#ieqSvg");
+      const bandFillsGroup = content.querySelector("#ieqBandFills");
       const curvePath = content.querySelector("#ieqCurvePath");
       const fillPath = content.querySelector("#ieqFillPath");
       const nodesGroup = content.querySelector("#ieqNodes");
       const readoutEl = content.querySelector("#ieqReadout");
+      const bandFillEls = bands.map((_, idx) => {
+        const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        p.setAttribute("fill", EQ_BAND_COLORS[idx % 4]);
+        bandFillsGroup?.appendChild(p);
+        return p;
+      });
 
       const freqToX = (f) => (Math.log(Math.max(20, Math.min(20000, f)) / 20) / Math.log(1000)) * 380;
       const xToFreq = (x) => 20 * Math.pow(1000, Math.max(0, Math.min(1, x / 380)));
@@ -1478,14 +1486,23 @@ export function createMixerView(container, store) {
         }));
 
         const pts = new Array(EQ_GRID.length);
+        const bandPts = bStates.map(() => new Array(EQ_GRID.length));
         for (let i = 0; i < EQ_GRID.length; i++) {
           const { x, freq } = EQ_GRID[i];
           let db = 0;
-          if (dspEditable) {
-            for (let j = 0; j < bStates.length; j++) db += evalEqBandDb(freq, bStates[j]);
+          for (let j = 0; j < bStates.length; j++) {
+            const bdb = dspEditable ? evalEqBandDb(freq, bStates[j]) : 0;
+            db += bdb;
+            bandPts[j][i] = `${i === 0 ? "M" : "L"}${x} ${dbToY(bdb).toFixed(1)}`;
           }
           pts[i] = `${i === 0 ? "M" : "L"}${x} ${dbToY(db).toFixed(1)}`;
         }
+        bandFillEls.forEach((el, j) => {
+          const bs = bStates[j];
+          const show = active && bs.type !== 11 && (Math.abs(bs.gain) > 0.05 || bs.type === 3 || bs.type === 1);
+          el.setAttribute("d", `${bandPts[j].join(" ")} L380 48 L0 48 Z`);
+          el.setAttribute("fill-opacity", show ? (j === selectedEqBand ? "0.18" : "0.07") : "0");
+        });
         const dStr = pts.join(" ");
         curvePath.setAttribute("d", dStr);
         curvePath.setAttribute("opacity", active ? "1" : "0.35");
