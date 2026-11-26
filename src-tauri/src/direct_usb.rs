@@ -503,12 +503,22 @@ mod transport {
                 if cnt == 0 {
                     return Err("No Audient USB device detected".into());
                 }
-                let mut handle: usize = 0;
-                let st = (self.open_by_idx)(0, &mut handle);
-                if st != 0 || handle == 0 {
-                    return Err(format!("OpenDeviceByIndex failed: 0x{st:X}"));
+                for idx in 0..cnt {
+                    let mut handle: usize = 0;
+                    let st = (self.open_by_idx)(idx, &mut handle);
+                    if st != 0 || handle == 0 {
+                        continue;
+                    }
+                    let dev = TusbDevice { api: self, handle };
+                    if dev.is_supported_mk3() {
+                        // Wait until the TUSBAudio clock/streaming interface is actually ready
+                        if dev.get_sample_rate().is_some() {
+                            return Ok(dev);
+                        }
+                        return Err("Audient MK3 device still initializing".into());
+                    }
                 }
-                Ok(TusbDevice { api: self, handle })
+                Err("No supported Audient MK3 device (iD1, iD2, iD2+, iD4+) detected".into())
             }
         }
     }
@@ -618,6 +628,26 @@ mod transport {
             };
             let st = unsafe { f(self.handle, samples) };
             if st == 0 { Ok(()) } else { Err(st) }
+        }
+
+        pub fn is_supported_mk3(&self) -> bool {
+            let model = self.detect_model_name();
+            if matches!(model.as_str(), "iD1" | "iD2" | "iD2+" | "iD4+") {
+                return true;
+            }
+            if let Some(f) = self.api.get_inst_id {
+                let mut wide = [0u16; 256];
+                let st = unsafe { f(self.handle, wide.as_mut_ptr(), wide.len() as u32) };
+                if st == 0 {
+                    let end = wide.iter().position(|&c| c == 0).unwrap_or(wide.len());
+                    let s = String::from_utf16_lossy(&wide[..end]).to_ascii_uppercase();
+                    return s.contains("PID_0014")
+                        || s.contains("PID_0015")
+                        || s.contains("PID_0016")
+                        || s.contains("PID_0018");
+                }
+            }
+            false
         }
 
         pub fn detect_model_name(&self) -> String {
@@ -910,13 +940,10 @@ pub fn vol_pan_to_crosspoints(vol: f64, pan: i32, muted: bool) -> (f64, f64) {
     }
 }
 
-/// Read the complete live iD2 state directly over USB and build the ValueTree + binding map.
+/// Read the complete live iD MK3 state directly over USB and build the ValueTree + binding map.
 /// Always polls live hardware state (48V, Glow, Lift, Orbit, Gain, Main/HP1, Mixer, EQ, Comp, etc.);
 /// applies pro studio defaults for monitor preferences on first launch (`!settings.initialized`).
 pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) -> DirectContext {
-    // Signal host-online handshake (0 -> 1, matching ADM startup sequence)
-    let _ = dev.vendor_out(BREQ_PARAM, ENT_SYSTEM, 0x0C00, &[0]);
-
     let model_name = dev.detect_model_name();
     let serial = dev
         .vendor_in(BREQ_PARAM, ENT_SYSTEM, 0x0100, 32)
@@ -952,45 +979,44 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
         let _ = dev.vendor_out(BREQ_PARAM, ENT_DIGITAL, 0x0100, &[settings.opt_mode as u8]);
     }
 
-    // Detect analog preamp count:
-    // Real analog preamps have a valid V-HPF band (ent=0x07 cs=0x06, freq != 0xFFFF);
-    // digital inputs return 0xFFFF in that slot (and known model PIDs provide an exact cap).
-    let model_analog_cap: u8 = match model_name.as_str() {
-        "iD1" => 1,
-        "iD2" | "iD2+" | "iD14" | "iD24" => 2,
-        "iD4" | "iD4+" | "iD44" => 4,
-        _ => 8,
+    // Use exact fixed hardware mixer channel counts for the 4 Audient MK3 models so
+    // transient USB hot-plug probe errors can never shift Comp Out 1+2 / 3+4 / 5+6 slots.
+    let (analog_count, digital_count): (u8, u8) = match model_name.as_str() {
+        "iD1" => (1, 0),
+        "iD2" | "iD2+" => (2, 8),
+        "iD4+" => (4, 8),
+        _ => {
+            let mut a: u8 = 0;
+            for ch in 0..8u8 {
+                let hpf_valid = dev
+                    .vendor_in(BREQ_PARAM, ENT_DSP, 0x0600 | (ch as u16), 8)
+                    .ok()
+                    .filter(|b| b.len() >= 4)
+                    .map(|b| u16::from_le_bytes([b[2], b[3]]) != 0xFFFF)
+                    .unwrap_or(false);
+                if hpf_valid {
+                    a += 1;
+                } else {
+                    break;
+                }
+            }
+            if a == 0 {
+                a = 2;
+            }
+            let mut d: u8 = 0;
+            for ch in a..(a + 16) {
+                if dev
+                    .vendor_in(BREQ_PARAM, ENT_INPUTS, 0x0200 | (ch as u16), 2)
+                    .is_ok()
+                {
+                    d += 1;
+                } else {
+                    break;
+                }
+            }
+            (a, d)
+        }
     };
-    let mut analog_count: u8 = 0;
-    for ch in 0..model_analog_cap {
-        let hpf_valid = dev
-            .vendor_in(BREQ_PARAM, ENT_DSP, 0x0600 | (ch as u16), 8)
-            .ok()
-            .filter(|b| b.len() >= 4)
-            .map(|b| u16::from_le_bytes([b[2], b[3]]) != 0xFFFF)
-            .unwrap_or(false);
-        if hpf_valid {
-            analog_count += 1;
-        } else {
-            break;
-        }
-    }
-    if analog_count == 0 {
-        analog_count = model_analog_cap.min(2);
-    }
-
-    // Detect digital input count (probe ent=0x01 cs=0x02 starting at analog_count)
-    let mut digital_count: u8 = 0;
-    for ch in analog_count..(analog_count + 16) {
-        if dev
-            .vendor_in(BREQ_PARAM, ENT_INPUTS, 0x0200 | (ch as u16), 2)
-            .is_ok()
-        {
-            digital_count += 1;
-        } else {
-            break;
-        }
-    }
     let total_inputs = analog_count + digital_count;
 
     let mut path_to_hw: HashMap<Vec<usize>, HwBinding> = HashMap::new();

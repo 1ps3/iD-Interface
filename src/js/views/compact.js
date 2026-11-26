@@ -382,7 +382,7 @@ export function createCompactWidget(rootEl, store, invoke) {
           </g>
 
           <!-- Optically centered live readout -->
-          <text id="hwDialVal" x="${DIAL_CX}" y="${DIAL_CY + 1}" dominant-baseline="central" class="hw-dial-val" fill="#ffffff" font-size="27"><tspan id="hwValSign"></tspan><tspan id="hwValBody">-35</tspan><tspan id="hwValPad" fill-opacity="0" aria-hidden="true"></tspan></text>
+          <text id="hwDialVal" x="${DIAL_CX}" y="${DIAL_CY}" dy="0.35em" text-anchor="middle" class="hw-dial-val" fill="#ffffff" font-size="27"><tspan id="hwValSign"></tspan><tspan id="hwValBody">-35</tspan><tspan id="hwValPad" fill-opacity="0" aria-hidden="true"></tspan></text>
 
           <!-- Dynamic interface model + active channel BELOW model -->
           <text id="hwDialModel" x="${DIAL_CX}" y="203" class="hw-dial-model">iD2</text>

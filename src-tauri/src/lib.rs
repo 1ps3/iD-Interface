@@ -2146,6 +2146,51 @@ fn generate_peer_id() -> [u8; 6] {
 }
 
 fn spawn_mdns_browser(addr_tx: watch::Sender<Option<SocketAddr>>) {
+    // On macOS, Apple's mDNSResponder + Local Network privacy often blocks raw multicast
+    // sockets or LAN IPs. Probe the local AudientDeviceManager listening TCP port directly
+    // via `lsof` and connect over 127.0.0.1 so macOS connects reliably even with Wi-Fi off.
+    #[cfg(target_os = "macos")]
+    {
+        let mac_tx = addr_tx.clone();
+        std::thread::spawn(move || {
+            let mut last_port: Option<u16> = None;
+            loop {
+                let mut found: Option<u16> = None;
+                if let Ok(out) = std::process::Command::new("lsof")
+                    .args(["-nP", "-a", "-c", "AudientDevice", "-iTCP", "-sTCP:LISTEN"])
+                    .output()
+                {
+                    let stdout = String::from_utf8_lossy(&out.stdout);
+                    for line in stdout.lines().skip(1) {
+                        // Look for `*:PORT (LISTEN)` or `127.0.0.1:PORT (LISTEN)`
+                        if let Some(listen_part) = line.split_whitespace().rev().nth(1) {
+                            if let Some(port_str) = listen_part.rsplit(':').next() {
+                                if let Ok(p) = port_str.parse::<u16>() {
+                                    if p >= 1024 {
+                                        found = Some(p);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if let Some(p) = found {
+                    if last_port != Some(p) {
+                        last_port = Some(p);
+                        let _ = mac_tx.send(Some(SocketAddr::new(
+                            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+                            p,
+                        )));
+                    }
+                } else {
+                    last_port = None;
+                }
+                std::thread::sleep(Duration::from_millis(1200));
+            }
+        });
+    }
+
     std::thread::spawn(move || {
         let Ok(mdns) = ServiceDaemon::new() else { return };
         let Ok(receiver) = mdns.browse("_adm._tcp.local.") else { return };
@@ -2162,6 +2207,10 @@ fn spawn_mdns_browser(addr_tx: watch::Sender<Option<SocketAddr>>) {
                 }
 
                 let port = info.get_port();
+                // Prefer 127.0.0.1 on macOS to avoid Local Network firewall blocks on LAN IPs
+                #[cfg(target_os = "macos")]
+                let ip = std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST);
+                #[cfg(not(target_os = "macos"))]
                 let ip = info
                     .get_addresses()
                     .iter()
@@ -2363,12 +2412,138 @@ async fn run_direct_usb_session(
             }
         };
 
+        let mut had_disconnected = false;
+
         while !stop_worker.load(Ordering::Relaxed) {
             let Ok(dev) = api.open_first() else {
+                had_disconnected = true;
                 let _ = usb_ev_tx.send(UsbEvent::Disconnected);
                 std::thread::sleep(Duration::from_millis(800));
                 continue;
             };
+
+            // On USB hot-plug reconnect, release the handle briefly and let the iD MK3 firmware
+            // + Windows Audio endpoints finish initializing before sending vendor control traffic.
+            if had_disconnected {
+                drop(dev);
+                std::thread::sleep(Duration::from_millis(1800));
+                if stop_worker.load(Ordering::Relaxed) {
+                    break;
+                }
+                let Ok(ready_dev) = api.open_first() else {
+                    continue;
+                };
+                had_disconnected = false;
+                let snap_settings = worker_live_settings
+                    .lock()
+                    .map(|g| g.clone())
+                    .unwrap_or_default();
+                let mut ctx = build_direct_context(&ready_dev, &snap_settings);
+                if let Ok(mut g) = worker_live_settings.lock() {
+                    g.initialized = true;
+                }
+                let _ = usb_ev_tx.send(UsbEvent::Connected {
+                    tree: ctx.tree.clone(),
+                    device_name: ctx.device_name.clone(),
+                    serial: ctx.serial.clone(),
+                });
+
+                let mut last_event_poll = std::time::Instant::now() - Duration::from_millis(50);
+                let mut last_panel_poll = std::time::Instant::now() - Duration::from_millis(80);
+                let mut last_meter_poll = std::time::Instant::now() - Duration::from_millis(50);
+                let mut err_streak = 0u32;
+
+                while !stop_worker.load(Ordering::Relaxed) {
+                    let mut latest_tree: Option<ValueTreeNode> = None;
+                    let mut batch: BTreeMap<Vec<usize>, JuceVar> = BTreeMap::new();
+                    let mut do_save_boot = false;
+                    let mut do_load_boot = false;
+                    while let Ok(cmd) = usb_cmd_rx.try_recv() {
+                        match cmd {
+                            UsbCmd::SetParam(path, val, tree_snap) => {
+                                batch.insert(path, val);
+                                latest_tree = Some(tree_snap);
+                            }
+                            UsbCmd::SaveBootState => do_save_boot = true,
+                            UsbCmd::LoadBootState => do_load_boot = true,
+                        }
+                    }
+                    if let Some(ref tree_snap) = latest_tree {
+                        write_param_batch_to_hardware(&ready_dev, &mut ctx, tree_snap, &batch);
+                    }
+                    if do_save_boot {
+                        let _ = save_boot_state(&ready_dev);
+                    }
+                    if do_load_boot {
+                        if load_boot_state(&ready_dev).is_ok() {
+                            std::thread::sleep(Duration::from_millis(80));
+                            let reload_settings = worker_live_settings
+                                .lock()
+                                .map(|g| g.clone())
+                                .unwrap_or_default();
+                            ctx = build_direct_context(&ready_dev, &reload_settings);
+                            let _ = usb_ev_tx.send(UsbEvent::Connected {
+                                tree: ctx.tree.clone(),
+                                device_name: ctx.device_name.clone(),
+                                serial: ctx.serial.clone(),
+                            });
+                        }
+                    }
+
+                    let now = std::time::Instant::now();
+                    if now.duration_since(last_event_poll) >= Duration::from_millis(16) {
+                        last_event_poll = now;
+                        match poll_hardware_events(&ready_dev, &mut ctx) {
+                            Ok(updates) => {
+                                err_streak = 0;
+                                for (path, value) in updates {
+                                    let _ = usb_ev_tx.send(UsbEvent::ParamUpdated { path, value });
+                                }
+                            }
+                            Err(_) => {
+                                err_streak += 1;
+                                if err_streak >= 6 {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if now.duration_since(last_panel_poll) >= Duration::from_millis(65) {
+                        last_panel_poll = now;
+                        if let Ok(updates) = poll_watched_front_panel(&ready_dev, &mut ctx, false) {
+                            for (path, value) in updates {
+                                let _ = usb_ev_tx.send(UsbEvent::ParamUpdated { path, value });
+                            }
+                        }
+                    }
+
+                    if now.duration_since(last_meter_poll) >= Duration::from_millis(33) {
+                        last_meter_poll = now;
+                        match poll_hardware_meters(&ready_dev) {
+                            Ok(mf) => {
+                                err_streak = 0;
+                                let _ = usb_ev_tx.send(UsbEvent::Meters(mf));
+                            }
+                            Err(_) => {
+                                err_streak += 1;
+                                if err_streak >= 6 {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+
+                had_disconnected = true;
+                let _ = usb_ev_tx.send(UsbEvent::Disconnected);
+                if !stop_worker.load(Ordering::Relaxed) {
+                    std::thread::sleep(Duration::from_millis(800));
+                }
+                continue;
+            }
 
             let snap_settings = worker_live_settings
                 .lock()
@@ -2474,9 +2649,10 @@ async fn run_direct_usb_session(
                 std::thread::sleep(Duration::from_millis(5));
             }
 
+            had_disconnected = true;
             let _ = usb_ev_tx.send(UsbEvent::Disconnected);
             if !stop_worker.load(Ordering::Relaxed) {
-                std::thread::sleep(Duration::from_millis(600));
+                std::thread::sleep(Duration::from_millis(800));
             }
         }
     });

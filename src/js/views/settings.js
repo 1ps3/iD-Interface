@@ -80,9 +80,20 @@ export function createSettingsView(container, store, callbacks = {}) {
       <div class="theme-card-head">
         <div>
           <div class="dock-title">APPEARANCE &amp; STUDIO WORKFLOW</div>
-          <div class="set-row-desc">Switch live across ${visibleThemes.length} console themes &amp; hardware textures, compact LED palettes, metering, and hotkeys</div>
+          <div class="set-row-desc">Console theme, compact LED palette, metering, and studio hotkeys</div>
         </div>
         <div class="theme-card-controls">
+          <div class="theme-sub-ctrl">
+            <span class="micro-label">THEME</span>
+            <select class="dock-select set-select" id="setThemeSelect">
+              ${visibleThemes
+                .map(
+                  (t) =>
+                    `<option value="${t.id}" ${t.id === curTheme ? "selected" : ""}>${t.name}</option>`
+                )
+                .join("")}
+            </select>
+          </div>
           <div class="theme-sub-ctrl">
             <span class="micro-label">COMPACT LEDS</span>
             <div class="seg-group" id="setCompactLedSeg">
@@ -92,22 +103,6 @@ export function createSettingsView(container, store, callbacks = {}) {
             </div>
           </div>
         </div>
-      </div>
-
-      <div class="theme-picker-grid" id="themePickerGrid">
-        ${visibleThemes.map(
-          (t) => `
-          <button type="button" class="theme-opt-tile ${t.id === curTheme ? "active" : ""}" data-theme-id="${t.id}">
-            <div class="theme-opt-top">
-              <span class="theme-opt-name">${t.name}</span>
-              <span class="theme-opt-tag">${t.tag}</span>
-            </div>
-            <div class="theme-opt-swatches">
-              ${t.swatches.map((c) => `<span class="theme-swatch" style="background:${c}"></span>`).join("")}
-            </div>
-          </button>
-        `
-        ).join("")}
       </div>
 
       <div class="theme-workflow-row">
@@ -137,14 +132,12 @@ export function createSettingsView(container, store, callbacks = {}) {
       </div>
     `;
 
-    themeCard.querySelectorAll("#themePickerGrid .theme-opt-tile").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const id = btn.dataset.themeId;
-        applyThemeToDocument(id);
-        store.saveUiPref("theme", id);
-        if (callbacks.onThemeChange) callbacks.onThemeChange(id);
-        renderThemeStudio();
-      });
+    const selTheme = themeCard.querySelector("#setThemeSelect");
+    selTheme?.addEventListener("change", () => {
+      const id = selTheme.value;
+      applyThemeToDocument(id);
+      store.saveUiPref("theme", id);
+      if (callbacks.onThemeChange) callbacks.onThemeChange(id);
     });
 
     themeCard.querySelectorAll("#setCompactLedSeg .seg-btn").forEach((btn) => {
@@ -495,7 +488,7 @@ export function createSettingsView(container, store, callbacks = {}) {
       <div class="settings-card-row">
         <div>
           <div class="set-row-title">COMPACT POSITION</div>
-          <div class="set-row-desc">Collapse to top-right of main window, or remember each mode's last position</div>
+          <div class="set-row-desc single-line-desc">Collapse to window top-right or remember last spot</div>
         </div>
         <div class="seg-group" id="compactPosSeg">
           <button type="button" class="seg-btn" data-val="anchor_right">TOP-RIGHT</button>

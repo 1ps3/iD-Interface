@@ -1,6 +1,8 @@
-# iD Interface
+# iD Interface — Open-Source Audient iD1, iD2, iD2+ & iD4+ (MK3) Software & Mixer
 
-A fast, lightweight, open-source studio console and floating desktop controller for **Audient iD** audio interfaces — built with **Rust + Tauri v2** and zero-bloat native WebView rendering.
+A fast, lightweight, open-source replacement mixer, DSP studio console, and floating desktop volume controller built specifically for the **Audient iD MK3 series** (**iD1**, **iD2**, **iD2+**, and **iD4+**) on **Windows & macOS** — powered by **Rust + Tauri v2** with zero-bloat native WebView rendering.
+
+> **Supported Hardware:** Designed exclusively for the 4 **Audient iD MK3** audio interfaces: **iD1**, **iD2**, **iD2+**, and **iD4+**. *(Legacy MK1/MK2 models such as iD4, iD14, iD24, and iD44 are not targeted.)*
 
 <p align="center">
   <img src="docs/preview-themes.png" alt="iD Interface — 9 Studio Themes" width="100%" />

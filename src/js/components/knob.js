@@ -133,7 +133,7 @@ export function createKnob(container, opts = {}) {
     <g class="dial-rotor">
       <line x1="100" y1="${ptrY1}" x2="100" y2="${ptrY2}" class="pointer" />
     </g>
-    <text x="100" y="101" dominant-baseline="central" class="db-value" style="font-size:${valueSize}px"><tspan class="val-sign"></tspan><tspan class="val-body">0</tspan><tspan class="val-pad" fill-opacity="0" aria-hidden="true"></tspan></text>
+    <text x="100" y="100" dy="0.35em" text-anchor="middle" class="db-value" style="font-size:${valueSize}px"><tspan class="val-sign"></tspan><tspan class="val-body">0</tspan><tspan class="val-pad" fill-opacity="0" aria-hidden="true"></tspan></text>
     <circle cx="100" cy="100" r="${hitRadius}" class="knob-hit" />
   `;
 
