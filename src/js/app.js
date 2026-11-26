@@ -21,6 +21,7 @@ const FULL_SIZE = { width: 1330, height: 790, minWidth: 1330, minHeight: 790 };
 
 let isMacOS = /Mac|Macintosh|MacIntel/i.test(navigator.platform || navigator.userAgent || "");
 document.documentElement.dataset.platform = isMacOS ? "macos" : "windows";
+if (isMacOS) applyThemeToDocument("liquidglass");
 let isFullMode = true;
 let isPinnedFull = false;
 let isPinnedCompact = true;
@@ -391,18 +392,29 @@ const FALLBACK_BUF = [
   { value: 2048, name: "2048 Samples" },
 ];
 const FALLBACK_CLK = [
-  { value: 0, name: "INTERNAL" },
-  { value: 1, name: "DIGITAL 1" },
+  { value: 0, name: "Internal" },
+  { value: 1, name: "Optical" },
 ];
 
-function wireTelemetryDropdown(pillEl, getPath, fallbackOpts) {
+function formatTitleOption(name) {
+  const s = String(name || "").trim();
+  if (!s) return s;
+  return s.replace(/\S+/g, (w) => {
+    if (/^\d/.test(w)) return w;
+    const l = w.toLowerCase();
+    return l.charAt(0).toUpperCase() + l.slice(1);
+  });
+}
+
+function wireTelemetryDropdown(pillEl, getPath, fallbackOpts, titleCase = false) {
   pillEl.addEventListener("mousedown", (e) => e.stopPropagation());
   pillEl.addEventListener("click", (e) => {
     e.stopPropagation();
     const p = getPath();
     if (!p) return;
     const vm = store.getVm(p);
-    const opts = vm?.options?.length ? vm.options : fallbackOpts;
+    const rawOpts = vm?.options?.length ? vm.options : fallbackOpts;
+    const opts = titleCase ? rawOpts.map((o) => ({ ...o, name: formatTitleOption(o.name) })) : rawOpts;
     const cur = store.getVal(p);
     openCustomMenu(pillEl, opts, cur, (val) => {
       store.setParam(p, Number(val));
@@ -412,7 +424,7 @@ function wireTelemetryDropdown(pillEl, getPath, fallbackOpts) {
 
 wireTelemetryDropdown(srPill, () => store.paths.sampleRate, FALLBACK_SR);
 wireTelemetryDropdown(bufPill, () => store.paths.bufferSize, FALLBACK_BUF);
-wireTelemetryDropdown(clkPill, () => store.paths.clockSource, FALLBACK_CLK);
+wireTelemetryDropdown(clkPill, () => store.paths.clockSource, FALLBACK_CLK, true);
 
 function syncTopbar() {
   const devName = store.connected ? store.getDeviceName() : "";
@@ -574,10 +586,9 @@ store.onParam((changedPath) => {
 });
 
 store.onUiPrefs((prefs) => {
-  if (typeof prefs.theme === "string") {
-    applyThemeToDocument(prefs.theme);
-    compactWidget.refreshTheme();
-  }
+  const themeId = typeof prefs.theme === "string" ? prefs.theme : isMacOS ? "liquidglass" : "obsidian";
+  applyThemeToDocument(themeId);
+  compactWidget.refreshTheme();
   if (typeof prefs.rmsMeters === "boolean") {
     document.documentElement.dataset.rms = prefs.rmsMeters ? "on" : "off";
   }

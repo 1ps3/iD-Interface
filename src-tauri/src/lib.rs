@@ -486,6 +486,7 @@ impl AdmStore {
             .unwrap_or(fallback)
     }
 
+    #[allow(dead_code)]
     fn custom_fn_is_active(&self) -> bool {
         match self.custom_fn_mode {
             CustomFnMode::MuteMics | CustomFnMode::MuteMic1 => self.get_int_val(&self.mic1_mute_path) != 0,
@@ -1020,47 +1021,28 @@ async fn set_custom_fn_mode(
         st.config.custom_fn_mode = mode;
         st.save_current_config();
 
-        // Use Monitor Correction slot (FnKeyModeSt = 7) as a silent carrier so the physical
-        // Fn button & LED work without engaging DIM or Talkback.
+        // Preserve the user's chosen hardware Function Button mode (so RoomTune stays untouched
+        // and users can freely combine hardware actions like Dim + Mute Mics). Only if the
+        // hardware Function Button is currently Off (0), switch it to Talkback (3) so the
+        // physical button fires FnActive events and lights its LED.
         if mode != CustomFnMode::None {
-            if let Some(p) = st.talkback_path.clone() {
-                if let Some(root) = st.root.as_mut() {
-                    if let Some(n) = root.get_path_mut(&p) {
-                        n.props.insert("value".into(), JuceVar::Int(0));
+            let cur_hw = st.get_int_val(&st.fn_mode_path);
+            if cur_hw == 0 {
+                if let Some(p) = st.fn_mode_path.clone() {
+                    if let Some(root) = st.root.as_mut() {
+                        if let Some(n) = root.get_path_mut(&p) {
+                            n.props.insert("value".into(), JuceVar::Int(3));
+                        }
                     }
+                    st.config.fn_key_mode = Some(3);
+                    st.config.direct_usb.fn_key_mode = 3;
+                    st.save_current_config();
+                    queued.push(OutboundPropertyChange {
+                        path: p,
+                        prop: "value".into(),
+                        value: JuceVar::Int(3),
+                    });
                 }
-                queued.push(OutboundPropertyChange {
-                    path: p,
-                    prop: "value".into(),
-                    value: JuceVar::Int(0),
-                });
-            }
-            if let Some(p) = st.fn_mode_path.clone() {
-                if let Some(root) = st.root.as_mut() {
-                    if let Some(n) = root.get_path_mut(&p) {
-                        n.props.insert("value".into(), JuceVar::Int(7));
-                    }
-                }
-                queued.push(OutboundPropertyChange {
-                    path: p,
-                    prop: "value".into(),
-                    value: JuceVar::Int(7),
-                });
-            }
-            // Sync RoomCorrection bypass (byps=0 -> LED ON, byps=1 -> LED OFF) to current custom action state
-            let is_active = st.custom_fn_is_active();
-            if let Some(p) = st.room_byps_path.clone() {
-                let byps = if is_active { 0 } else { 1 };
-                if let Some(root) = st.root.as_mut() {
-                    if let Some(n) = root.get_path_mut(&p) {
-                        n.props.insert("value".into(), JuceVar::Int(byps));
-                    }
-                }
-                queued.push(OutboundPropertyChange {
-                    path: p,
-                    prop: "value".into(),
-                    value: JuceVar::Int(byps),
-                });
             }
         }
     }
@@ -1795,12 +1777,13 @@ fn build_tray_menu_state_blocking(app: &AppHandle) -> TrayMenuState {
     let state = app.state::<AppState>();
     let (theme, connected, is_muted) = {
         let st = state.store.blocking_lock();
+        let default_theme = if cfg!(target_os = "macos") { "liquidglass" } else { "obsidian" };
         let theme = st
             .config
             .ui_prefs
             .get("theme")
             .and_then(|v| v.as_str())
-            .unwrap_or("obsidian")
+            .unwrap_or(default_theme)
             .to_string();
         let muted = st.get_int_val(&st.main_mute_path) != 0;
         (theme, st.connected, muted)
@@ -1827,12 +1810,13 @@ async fn build_tray_menu_state_async(app: &AppHandle) -> TrayMenuState {
     let state = app.state::<AppState>();
     let (theme, connected, is_muted) = {
         let st = state.store.lock().await;
+        let default_theme = if cfg!(target_os = "macos") { "liquidglass" } else { "obsidian" };
         let theme = st
             .config
             .ui_prefs
             .get("theme")
             .and_then(|v| v.as_str())
-            .unwrap_or("obsidian")
+            .unwrap_or(default_theme)
             .to_string();
         let muted = st.get_int_val(&st.main_mute_path) != 0;
         (theme, st.connected, muted)

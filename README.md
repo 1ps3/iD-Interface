@@ -24,7 +24,7 @@ Grab the latest build from **[Releases](https://github.com/1ps3/iD-Interface/rel
 | **Windows (portable)** | `id-interface.exe` | No install — just run it |
 | **macOS (Apple Silicon + Intel)** | `iD Interface_x.y.z_universal.dmg` | Drag to Applications |
 
-* **Updates:** The app checks GitHub Releases on launch and shows an **`UPDATE vX.Y.Z`** badge in the top bar when a new version is out (or press **CHECK** in Settings).
+* **Updates:** Built-in **1-click self-updater** (Windows & macOS) — checks GitHub Releases on launch, shows an **`UPDATE vX.Y.Z`** badge in the top bar (or **Settings → CHECK**), and downloads, installs, and restarts automatically.
 * **macOS first launch:** Builds are not notarized yet, so run `xattr -cr "/Applications/iD Interface.app"` once (or right-click → Open).
 * **Windows SmartScreen:** Builds are not code-signed yet — click **More info → Run anyway**.
 
@@ -59,7 +59,7 @@ Collapse the full console into a resizable, always-on-top hardware faceplate for
 * **Native Windows Window Frame:** Full Console uses the native Windows DWM frame (theme-aware border, corners & shadow, Aero Snap, `Win+↑/↓`, double-click title bar) plus `F11` true fullscreen.
 * **Themed Tray Menu:** Right-click the tray icon for a menu that matches your current theme — open/focus, switch Compact ↔ Full, Mute Main, or Quit.
 * **Remembers Your Setup:** Restores Compact vs Full mode, your selected compact channel, and window monitor/position on next launch. Compact Mode collapses to the top-right of the console by default (or remembers its own spot — toggle in Settings).
-* **Custom Function Button:** Map the iD2's hardware button to Mute Mics, Mute Headphones, Speaker/Headphone Swap, Mid/Side Check, Reference Level Recall, Global Mute, DSP Bypass A/B, Scene Toggle, and more.
+* **Rebindable Hardware Function Button:** Change what the physical **Function button** on your iD MK3 does — map it to **Mute Mics (1 + 2)**, **Mute Mic 1**, **Mute Mic 2**, **Mute Headphones**, **Speakers / Headphones Swap**, **Mid / Side Check**, **Reference Level Recall**, **Global Mute (All Outputs)**, **Bypass Input DSP (A/B)**, or **Toggle Scene 1** (plus all standard Audient hardware functions).
 * **Instant Scene Recall:** Only changed parameters are sent to the hardware, so scene swaps are near-instant.
 
 ---

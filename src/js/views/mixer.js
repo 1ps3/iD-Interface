@@ -1775,6 +1775,11 @@ export function createMixerView(container, store) {
         valLabel.textContent = v <= -128 ? "-∞" : `${v} dB`;
         store.setParam(volPath, v);
       });
+      slider.addEventListener("dblclick", () => {
+        slider.value = "0";
+        valLabel.textContent = "0 dB";
+        store.setParam(volPath, 0);
+      });
       bindBusParam(volPath, (v) => {
         if (typeof v === "number") {
           slider.value = String(Math.round(v));

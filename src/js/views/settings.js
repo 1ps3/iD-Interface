@@ -8,7 +8,33 @@ import { THEMES, COMPACT_LED_MODES, applyThemeToDocument, getVisibleThemes } fro
 import { checkForGithubUpdate } from "../updater.js";
 import { pathKey } from "../store.js";
 
-function fillSelect(sel, store, path, fallback) {
+function formatOptionTitle(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  const fixed = {
+    roomtune: "RoomTune",
+    "room tune": "RoomTune",
+    adat: "ADAT",
+    "s/pdif": "S/PDIF",
+    spdif: "S/PDIF",
+    dsp: "DSP",
+    "a/b": "A/B",
+    hp: "HP",
+  };
+  const lower = s.toLowerCase();
+  if (fixed[lower]) return fixed[lower];
+  return s.replace(/\S+/g, (word) => {
+    const wl = word.toLowerCase();
+    if (fixed[wl]) return fixed[wl];
+    if (/^\d/.test(word)) return word;
+    if (word === word.toUpperCase() && word.length > 1) {
+      return wl.charAt(0).toUpperCase() + wl.slice(1);
+    }
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  });
+}
+
+function fillSelect(sel, store, path, fallback, titleCase = false) {
   const vm = store.getVm(path);
   const opts = vm?.options?.length ? vm.options : fallback;
   const cur = store.getVal(path);
@@ -16,7 +42,7 @@ function fillSelect(sel, store, path, fallback) {
   for (const o of opts) {
     const opt = document.createElement("option");
     opt.value = String(o.value);
-    opt.textContent = o.name;
+    opt.textContent = titleCase ? formatOptionTitle(o.name) : o.name;
     if (o.value === cur) opt.selected = true;
     sel.appendChild(opt);
   }
@@ -68,7 +94,7 @@ export function createSettingsView(container, store, callbacks = {}) {
   const devCol = container.querySelector("#devSettingsCol");
 
   function renderThemeStudio() {
-    const curTheme = store.getUiPref("theme", "obsidian");
+    const curTheme = store.getUiPref("theme", isMacOS ? "liquidglass" : "obsidian");
     const curCompactLed = store.getUiPref("compactTheme", "white");
     const rmsOn = store.getUiPref("rmsMeters", true) !== false;
     const hotkeysOn = store.getUiPref("hotkeysEnabled", true) !== false;
@@ -251,10 +277,16 @@ export function createSettingsView(container, store, callbacks = {}) {
         { value: 176400, name: "176.4kHz" },
         { value: 192000, name: "192kHz" },
       ]);
-      fillSelect(selClk, store, p.clockSource, [
-        { value: 0, name: "INTERNAL" },
-        { value: 1, name: "DIGITAL 1" },
-      ]);
+      fillSelect(
+        selClk,
+        store,
+        p.clockSource,
+        [
+          { value: 0, name: "Internal" },
+          { value: 1, name: "Optical" },
+        ],
+        true
+      );
       fillSelect(selBuf, store, p.bufferSize, [
         { value: 16, name: "16 Samples" },
         { value: 32, name: "32 Samples" },
@@ -324,9 +356,17 @@ export function createSettingsView(container, store, callbacks = {}) {
       <div class="settings-card-row">
         <div>
           <div class="set-row-title">FUNCTION BUTTON</div>
-          <div class="set-row-desc" id="fnKeyDesc">Action assigned to the physical iD function key</div>
+          <div class="set-row-desc">Hardware action on the physical iD function key</div>
         </div>
         <select class="dock-select set-select" id="selFnKey"></select>
+      </div>
+
+      <div class="settings-card-row">
+        <div>
+          <div class="set-row-title">CUSTOM FN ACTION</div>
+          <div class="set-row-desc" id="fnKeyDesc">Optional software action combined with the Function button (e.g. Dim + Mute Mics)</div>
+        </div>
+        <select class="dock-select set-select" id="selCustomFn"></select>
       </div>
     `;
 
@@ -377,18 +417,20 @@ export function createSettingsView(container, store, callbacks = {}) {
     syncMonoMode();
 
     const selFn = monCol.querySelector("#selFnKey");
+    const selCustomFn = monCol.querySelector("#selCustomFn");
     const fnKeyDesc = monCol.querySelector("#fnKeyDesc");
     const CUSTOM_FN_OPTIONS = [
-      { value: "custom:mute_mics", name: "Mute Mics (1 + 2)", desc: "Toggle hardware preamp mute on Mic 1 & Mic 2 (cough button)" },
-      { value: "custom:mute_mic1", name: "Mute Mic 1", desc: "Toggle hardware preamp mute on Mic 1" },
-      { value: "custom:mute_mic2", name: "Mute Mic 2", desc: "Toggle hardware preamp mute on Mic 2" },
-      { value: "custom:mute_headphones", name: "Mute Headphones", desc: "Toggle Headphones (HP 1) mute to prevent room bleed" },
-      { value: "custom:swap_spk_hp", name: "Speakers / Headphones Swap", desc: "Alternate between Main Speakers and Headphones (mutes one, unmutes the other)" },
-      { value: "custom:mid_side", name: "Mid / Side Check", desc: "Toggle Monitor Mid/Side difference check for stereo width & phase" },
-      { value: "custom:ref_level", name: "Reference Level Recall", desc: "Jump Main Monitor to calibrated Ref Level and toggle back to previous volume" },
-      { value: "custom:global_mute", name: "Global Mute (All Outputs)", desc: "Mute or unmute all physical outputs (Speakers, Alt & Headphones) together" },
-      { value: "custom:bypass_dsp", name: "Bypass Input DSP (A/B)", desc: "Bypass Mic 1 & 2 EQ + Compressor together for instant wet/dry comparison" },
-      { value: "custom:toggle_scene1", name: "Toggle Scene 1", desc: "Switch between Saved Scene 1 and your Live Working Scene from the hardware button" },
+      { value: "none", name: "None", desc: "Optional software action combined with the Function button (e.g. Dim + Mute Mics)" },
+      { value: "mute_mics", name: "Mute Mics (1 + 2)", desc: "Toggle hardware preamp mute on Mic 1 & Mic 2 (cough button)" },
+      { value: "mute_mic1", name: "Mute Mic 1", desc: "Toggle hardware preamp mute on Mic 1" },
+      { value: "mute_mic2", name: "Mute Mic 2", desc: "Toggle hardware preamp mute on Mic 2" },
+      { value: "mute_headphones", name: "Mute Headphones", desc: "Toggle Headphones (HP 1) mute to prevent room bleed" },
+      { value: "swap_spk_hp", name: "Speakers / Headphones Swap", desc: "Alternate between Main Speakers and Headphones (mutes one, unmutes the other)" },
+      { value: "mid_side", name: "Mid / Side Check", desc: "Toggle Monitor Mid/Side difference check for stereo width & phase" },
+      { value: "ref_level", name: "Reference Level Recall", desc: "Jump Main Monitor to calibrated Ref Level and toggle back to previous volume" },
+      { value: "global_mute", name: "Global Mute (All Outputs)", desc: "Mute or unmute all physical outputs (Speakers, Alt & Headphones) together" },
+      { value: "bypass_dsp", name: "Bypass Input DSP (A/B)", desc: "Bypass Mic 1 & 2 EQ + Compressor together for instant wet/dry comparison" },
+      { value: "toggle_scene1", name: "Toggle Scene 1", desc: "Switch between Saved Scene 1 and your Live Working Scene from the hardware button" },
     ];
     const syncFn = () => {
       const vm = store.getVm(p.fnKeyMode);
@@ -397,41 +439,34 @@ export function createSettingsView(container, store, callbacks = {}) {
       const custom = store.customFnMode || "none";
 
       selFn.innerHTML = "";
-      const hwGroup = document.createElement("optgroup");
-      hwGroup.label = "Hardware";
       for (const o of hwOpts) {
         const opt = document.createElement("option");
         opt.value = String(o.value);
-        opt.textContent = o.name;
-        if (custom === "none" && o.value === curHw) opt.selected = true;
-        hwGroup.appendChild(opt);
+        opt.textContent = formatOptionTitle(o.name);
+        if (o.value === curHw) opt.selected = true;
+        selFn.appendChild(opt);
       }
-      selFn.appendChild(hwGroup);
 
-      const customGroup = document.createElement("optgroup");
-      customGroup.label = "Custom Studio Actions";
+      selCustomFn.innerHTML = "";
       for (const o of CUSTOM_FN_OPTIONS) {
         const opt = document.createElement("option");
         opt.value = o.value;
         opt.textContent = o.name;
-        if (custom !== "none" && o.value === `custom:${custom}`) opt.selected = true;
-        customGroup.appendChild(opt);
+        if (o.value === custom) opt.selected = true;
+        selCustomFn.appendChild(opt);
       }
-      selFn.appendChild(customGroup);
 
-      const matchedCustom = custom !== "none" ? CUSTOM_FN_OPTIONS.find((o) => o.value === `custom:${custom}`) : null;
+      const matchedCustom = CUSTOM_FN_OPTIONS.find((o) => o.value === custom);
       fnKeyDesc.textContent = matchedCustom
         ? matchedCustom.desc
-        : "Action assigned to the physical iD function key";
+        : "Optional software action combined with the Function button (e.g. Dim + Mute Mics)";
     };
     selFn.addEventListener("change", async () => {
-      const v = selFn.value;
-      if (v.startsWith("custom:")) {
-        await store.setCustomFnMode(v.slice("custom:".length));
-      } else {
-        await store.setCustomFnMode("none");
-        await store.setParam(p.fnKeyMode, Number(v));
-      }
+      await store.setParam(p.fnKeyMode, Number(selFn.value));
+      syncFn();
+    });
+    selCustomFn.addEventListener("change", async () => {
+      await store.setCustomFnMode(selCustomFn.value);
       syncFn();
     });
     bind(p.fnKeyMode, syncFn);
