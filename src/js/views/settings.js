@@ -4,7 +4,7 @@
 // Optical Input (ADAT/SPDIF), Global Mute, Show Preamp Trim, Front Panel Meter
 
 import { createKnob } from "../components/knob.js";
-import { THEMES, COMPACT_LED_MODES, applyThemeToDocument, getVisibleThemes } from "../themes.js";
+import { THEMES, COMPACT_LED_MODES, applyThemeToDocument, applyGlassTintMode, getVisibleThemes } from "../themes.js";
 import { checkForGithubUpdate } from "../updater.js";
 import { pathKey } from "../store.js";
 
@@ -102,6 +102,7 @@ export function createSettingsView(container, store, callbacks = {}) {
 
     const visibleThemes = getVisibleThemes(isMacOS);
 
+    const curGlassTint = store.getUiPref("glassTintMode", "auto");
     themeCard.innerHTML = `
       <div class="theme-card-head">
         <div>
@@ -120,6 +121,18 @@ export function createSettingsView(container, store, callbacks = {}) {
                 .join("")}
             </select>
           </div>
+          ${
+            curTheme === "liquidglass"
+              ? `<div class="theme-sub-ctrl">
+            <span class="micro-label">GLASS</span>
+            <div class="seg-group" id="setGlassTintSeg">
+              <button type="button" class="seg-btn ${curGlassTint === "auto" ? "active" : ""}" data-tint="auto">AUTO</button>
+              <button type="button" class="seg-btn ${curGlassTint === "clear" ? "active" : ""}" data-tint="clear">CLEAR</button>
+              <button type="button" class="seg-btn ${curGlassTint === "tinted" ? "active" : ""}" data-tint="tinted">TINTED</button>
+            </div>
+          </div>`
+              : ""
+          }
           <div class="theme-sub-ctrl">
             <span class="micro-label">COMPACT LEDS</span>
             <div class="seg-group" id="setCompactLedSeg">
@@ -164,6 +177,16 @@ export function createSettingsView(container, store, callbacks = {}) {
       applyThemeToDocument(id);
       store.saveUiPref("theme", id);
       if (callbacks.onThemeChange) callbacks.onThemeChange(id);
+      renderThemeStudio();
+    });
+
+    themeCard.querySelectorAll("#setGlassTintSeg .seg-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const mode = btn.dataset.tint || "auto";
+        applyGlassTintMode(mode);
+        store.saveUiPref("glassTintMode", mode);
+        renderThemeStudio();
+      });
     });
 
     themeCard.querySelectorAll("#setCompactLedSeg .seg-btn").forEach((btn) => {

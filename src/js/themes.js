@@ -86,7 +86,14 @@ const MAC_ACCENT_PALETTE = {
   6: { light: "#ff2d55", dark: "#ff375f", fg: "#ffffff" },    // Pink
 };
 
+const reduceTransQuery =
+  typeof window !== "undefined" && window.matchMedia
+    ? window.matchMedia("(prefers-reduced-transparency: reduce)")
+    : null;
+
 let currentMacAccentCode = null;
+let systemReduceTransparency = Boolean(reduceTransQuery && reduceTransQuery.matches);
+let userGlassTintPref = "auto"; // "auto" | "clear" | "tinted"
 
 function applyMacAccentVars() {
   const isLight = document.documentElement.dataset.glassScheme === "light";
@@ -96,14 +103,39 @@ function applyMacAccentVars() {
   document.documentElement.style.setProperty("--mac-accent-fg", entry.fg);
 }
 
+function syncGlassTintAttr() {
+  const effective =
+    userGlassTintPref === "clear" || userGlassTintPref === "tinted"
+      ? userGlassTintPref
+      : systemReduceTransparency || Boolean(reduceTransQuery && reduceTransQuery.matches)
+        ? "tinted"
+        : "clear";
+  document.documentElement.dataset.glassTint = effective;
+}
+
+export function applyGlassTintMode(mode) {
+  userGlassTintPref = mode === "clear" || mode === "tinted" ? mode : "auto";
+  syncGlassTintAttr();
+}
+
 export async function refreshSystemAccent() {
   const invoke = window.__TAURI__?.core?.invoke;
   if (!invoke) return;
   try {
-    const code = await invoke("get_system_accent");
-    currentMacAccentCode = typeof code === "number" ? code : null;
+    const app = await invoke("get_system_appearance");
+    if (app && typeof app === "object") {
+      currentMacAccentCode = typeof app.accent === "number" ? app.accent : null;
+      systemReduceTransparency = Boolean(app.reduceTransparency);
+    }
     applyMacAccentVars();
-  } catch {}
+    syncGlassTintAttr();
+  } catch {
+    try {
+      const code = await invoke("get_system_accent");
+      currentMacAccentCode = typeof code === "number" ? code : null;
+      applyMacAccentVars();
+    } catch {}
+  }
 }
 
 function syncGlassColorScheme() {
@@ -113,6 +145,13 @@ function syncGlassColorScheme() {
   document.documentElement.dataset.lightUi =
     theme === "daylight" || (theme === "liquidglass" && isLight) ? "true" : "false";
   applyMacAccentVars();
+  syncGlassTintAttr();
+}
+
+if (reduceTransQuery) {
+  const onTransChange = () => syncGlassTintAttr();
+  if (reduceTransQuery.addEventListener) reduceTransQuery.addEventListener("change", onTransChange);
+  else if (reduceTransQuery.addListener) reduceTransQuery.addListener(onTransChange);
 }
 
 if (colorSchemeQuery) {

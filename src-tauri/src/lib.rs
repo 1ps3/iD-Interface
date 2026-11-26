@@ -868,23 +868,58 @@ async fn get_backend_info(state: State<'_, AppState>) -> Result<BackendInfo, Str
     Ok(state.backend_info.lock().await.clone())
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SystemAppearance {
+    accent: Option<i32>,
+    reduce_transparency: bool,
+}
+
 #[tauri::command]
 fn get_system_accent() -> Option<i32> {
+    get_system_appearance().accent
+}
+
+#[tauri::command]
+fn get_system_appearance() -> SystemAppearance {
     #[cfg(target_os = "macos")]
     {
-        let out = std::process::Command::new("defaults")
+        let accent = std::process::Command::new("defaults")
             .args(["read", "-g", "AppleAccentColor"])
             .output()
-            .ok()?;
-        if !out.status.success() {
-            return None;
-        }
-        let s = String::from_utf8_lossy(&out.stdout);
-        return s.trim().parse::<i32>().ok();
+            .ok()
+            .filter(|o| o.status.success())
+            .and_then(|o| String::from_utf8_lossy(&o.stdout).trim().parse::<i32>().ok());
+        let reduce_transparency = std::process::Command::new("defaults")
+            .args(["read", "com.apple.universalaccess", "reduceTransparency"])
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim() == "1")
+            .unwrap_or(false);
+        return SystemAppearance {
+            accent,
+            reduce_transparency,
+        };
     }
     #[cfg(not(target_os = "macos"))]
     {
-        None
+        SystemAppearance {
+            accent: None,
+            reduce_transparency: false,
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn macos_sync_window_mode(window: &tauri::WebviewWindow, is_full: bool) {
+    extern "C" {
+        fn macos_set_compact_window_style(ns_window_ptr: *mut std::ffi::c_void, is_compact: std::ffi::c_int);
+    }
+    if let Ok(ns_win) = window.ns_window() {
+        unsafe {
+            macos_set_compact_window_style(ns_win, if is_full { 0 } else { 1 });
+        }
     }
 }
 
@@ -1277,7 +1312,7 @@ async fn set_window_size(
     #[cfg(target_os = "windows")]
     win32_sync_dwm_frame(&window, target_full);
     #[cfg(target_os = "macos")]
-    let _ = window.set_decorations(target_full);
+    macos_sync_window_mode(&window, target_full);
 
     if let Some(can_resize) = resizable {
         let _ = window.set_resizable(can_resize);
@@ -2323,9 +2358,13 @@ async fn install_app_update(
              hdiutil attach '{dmg}' -nobrowse -quiet -mountpoint '{mnt}' || exit 1\n\
              NEW_APP=$(find '{mnt}' -maxdepth 2 -name '*.app' | head -n 1)\n\
              if [ -n \"$NEW_APP\" ]; then\n\
-               rm -rf '{app}'\n\
-               ditto \"$NEW_APP\" '{app}'\n\
-               xattr -cr '{app}' 2>/dev/null || true\n\
+               rm -rf '{app}.new'\n\
+               if ditto \"$NEW_APP\" '{app}.new'; then\n\
+                 rm -rf '{app}' && mv '{app}.new' '{app}'\n\
+                 xattr -cr '{app}' 2>/dev/null || true\n\
+               else\n\
+                 rm -rf '{app}.new'\n\
+               fi\n\
              fi\n\
              hdiutil detach '{mnt}' -quiet 2>/dev/null || true\n\
              rm -rf '{mnt}' '{dmg}'\n\
@@ -3430,6 +3469,7 @@ pub fn run() {
             get_adm_status,
             get_backend_info,
             get_system_accent,
+            get_system_appearance,
             set_backend_mode,
             get_full_state,
             save_hardware_boot_state,
@@ -3500,9 +3540,7 @@ pub fn run() {
                 #[cfg(target_os = "windows")]
                 win32_sync_dwm_frame(&window, !start_compact);
                 #[cfg(target_os = "macos")]
-                if start_compact {
-                    let _ = window.set_decorations(false);
-                }
+                macos_sync_window_mode(&window, !start_compact);
                 let scale = window.scale_factor().unwrap_or(1.0);
 
                 if start_compact {

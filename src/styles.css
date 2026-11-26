@@ -6993,7 +6993,14 @@ html.tray-menu-page body {
 
 :root[data-theme="liquidglass"] .action-btn,
 :root[data-theme="liquidglass"] .mon-btn,
-:root[data-theme="liquidglass"] .mini-pill-btn {
+:root[data-theme="liquidglass"] .ms-btn,
+:root[data-theme="liquidglass"] .mini-pill-btn,
+:root[data-theme="liquidglass"] .tone-btn,
+:root[data-theme="liquidglass"] .orbit-btn,
+:root[data-theme="liquidglass"] .link-pill,
+:root[data-theme="liquidglass"] .eq-band-pill,
+:root[data-theme="liquidglass"] .preamp-eq-band-tile,
+:root[data-theme="liquidglass"] .lb-src-btn {
   border-radius: 10px;
   background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.03) 100%);
   border-color: rgba(255, 255, 255, 0.16);
@@ -7004,14 +7011,22 @@ html.tray-menu-page body {
 :root[data-theme="liquidglass"] .dock-select,
 :root[data-theme="liquidglass"] .insp-ch-select {
   border-radius: 10px;
-  border-color: rgba(255, 255, 255, 0.16);
+  background-color: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
   transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, color 150ms ease;
 }
 
 :root[data-theme="liquidglass"] .action-btn:hover,
 :root[data-theme="liquidglass"] .mon-btn:hover,
+:root[data-theme="liquidglass"] .ms-btn:hover,
 :root[data-theme="liquidglass"] .mini-pill-btn:hover,
+:root[data-theme="liquidglass"] .tone-btn:hover,
+:root[data-theme="liquidglass"] .orbit-btn:hover,
+:root[data-theme="liquidglass"] .link-pill:hover,
+:root[data-theme="liquidglass"] .eq-band-pill:hover,
+:root[data-theme="liquidglass"] .preamp-eq-band-tile:hover,
+:root[data-theme="liquidglass"] .lb-src-btn:hover,
 :root[data-theme="liquidglass"] .dock-select:hover,
 :root[data-theme="liquidglass"] .dock-select.select-open,
 :root[data-theme="liquidglass"] .insp-ch-select:hover,
@@ -7025,7 +7040,10 @@ html.tray-menu-page body {
 
 :root[data-theme="liquidglass"] .action-btn:active,
 :root[data-theme="liquidglass"] .mon-btn:active,
-:root[data-theme="liquidglass"] .mini-pill-btn:active {
+:root[data-theme="liquidglass"] .ms-btn:active,
+:root[data-theme="liquidglass"] .mini-pill-btn:active,
+:root[data-theme="liquidglass"] .tone-btn:active,
+:root[data-theme="liquidglass"] .orbit-btn:active {
   transform: scale(0.97);
 }
 
@@ -7039,21 +7057,58 @@ html.tray-menu-page body {
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
-:root[data-theme="liquidglass"] .seg-btn {
+:root[data-theme="liquidglass"] .seg-btn,
+:root[data-theme="liquidglass"] .bus-tab {
   border-radius: 999px;
+  background: transparent;
+  border-color: transparent;
   transition: background 150ms ease, color 140ms ease, box-shadow 150ms ease;
 }
 
-:root[data-theme="liquidglass"] .seg-btn:hover:not(.active) {
+:root[data-theme="liquidglass"] .seg-btn:hover:not(.active),
+:root[data-theme="liquidglass"] .bus-tab:hover:not(.active) {
   background: rgba(255, 255, 255, 0.1);
 }
 
-:root[data-theme="liquidglass"] .seg-btn.active {
+:root[data-theme="liquidglass"] .seg-btn.active,
+:root[data-theme="liquidglass"] .bus-tab.active {
   background: rgba(255, 255, 255, 0.22);
   color: #ffffff;
+  border-color: transparent;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.34),
     0 2px 8px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-theme="liquidglass"] .bus-vol-inline,
+:root[data-theme="liquidglass"] .reverb-bar {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+:root[data-theme="liquidglass"] .reverb-bar {
+  border-radius: 14px;
+}
+
+/* Liquid Glass Dark: Clear vs Tinted (Reduce Transparency) */
+:root[data-theme="liquidglass"][data-glass-tint="clear"] {
+  --bg-shell: rgba(18, 21, 28, 0.64);
+  --bg-pod: rgba(26, 30, 40, 0.44);
+  --bg-canvas: rgba(16, 19, 26, 0.36);
+  --bg-card: rgba(38, 44, 58, 0.42);
+  --bg-panel: rgba(46, 52, 68, 0.46);
+  --bg-inset: rgba(16, 19, 26, 0.42);
+}
+
+:root[data-theme="liquidglass"][data-glass-tint="tinted"] {
+  --bg-shell: rgba(24, 26, 33, 0.94);
+  --bg-pod: rgba(32, 35, 44, 0.88);
+  --bg-canvas: rgba(22, 24, 31, 0.86);
+  --bg-card: rgba(40, 44, 55, 0.86);
+  --bg-panel: rgba(48, 53, 66, 0.88);
+  --bg-inset: rgba(22, 25, 33, 0.86);
 }
 
 :root[data-theme="liquidglass"] .custom-select-opt {
@@ -7212,7 +7267,14 @@ html.tray-menu-page body {
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .action-btn,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .mon-btn,
-:root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-pill-btn {
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .ms-btn,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-pill-btn,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .tone-btn,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .orbit-btn,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .link-pill,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .eq-band-pill,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .preamp-eq-band-tile,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .lb-src-btn {
   background-color: rgba(255, 255, 255, 0.84);
   background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(240, 245, 254, 0.72) 100%);
   border-color: rgba(25, 35, 55, 0.14);
@@ -7224,8 +7286,8 @@ html.tray-menu-page body {
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .dock-select,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .insp-ch-select {
-  background-color: rgba(255, 255, 255, 0.88);
-  border-color: rgba(25, 35, 55, 0.15);
+  background-color: rgba(255, 255, 255, 0.82);
+  border-color: rgba(25, 35, 55, 0.14);
   color: #141821;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
@@ -7234,7 +7296,14 @@ html.tray-menu-page body {
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .action-btn:hover,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .mon-btn:hover,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .ms-btn:hover,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-pill-btn:hover,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .tone-btn:hover,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .orbit-btn:hover,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .link-pill:hover,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .eq-band-pill:hover,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .preamp-eq-band-tile:hover,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .lb-src-btn:hover,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .dock-select:hover,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .dock-select.select-open,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .insp-ch-select:hover,
@@ -7255,14 +7324,76 @@ html.tray-menu-page body {
   box-shadow: inset 0 1px 2px rgba(18, 28, 48, 0.06);
 }
 
-:root[data-theme="liquidglass"][data-glass-scheme="light"] .seg-btn {
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .seg-btn,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .bus-tab {
+  background: transparent;
+  border-color: transparent;
   color: rgba(20, 26, 40, 0.72);
 }
 
-:root[data-theme="liquidglass"][data-glass-scheme="light"] .seg-btn.active {
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .seg-btn:hover:not(.active),
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .bus-tab:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.55);
+  color: #141821;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .seg-btn.active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .bus-tab.active {
   background: #ffffff;
   color: #141821;
+  border-color: transparent;
   box-shadow: 0 2px 7px rgba(18, 28, 48, 0.12);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .bus-vol-inline,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .reverb-bar {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(25, 35, 55, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 2px 8px rgba(18, 28, 48, 0.06);
+}
+
+/* Frosted glass fader caps & slider thumbs in Light Mode (no harsh black sliders) */
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .fader-thumb {
+  background: linear-gradient(180deg, #ffffff 0%, #e4eaf5 55%, #d6dfee 100%);
+  border-color: rgba(25, 35, 55, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 2px 6px rgba(18, 28, 48, 0.18);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .fader-thumb-ridge {
+  background: rgba(25, 35, 55, 0.16);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .fader-thumb-line {
+  background: var(--mac-accent, #007aff);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-slider::-webkit-slider-thumb {
+  background: #ffffff;
+  border: 1.5px solid var(--mac-accent, #007aff);
+  box-shadow: 0 1px 4px rgba(18, 28, 48, 0.22);
+}
+
+/* Liquid Glass Light: Clear vs Tinted (Reduce Transparency) */
+:root[data-theme="liquidglass"][data-glass-scheme="light"][data-glass-tint="clear"] {
+  --bg-shell: rgba(240, 245, 254, 0.68);
+  --bg-pod: rgba(255, 255, 255, 0.52);
+  --bg-canvas: rgba(235, 241, 252, 0.44);
+  --bg-card: rgba(255, 255, 255, 0.58);
+  --bg-panel: rgba(246, 249, 255, 0.6);
+  --bg-inset: rgba(226, 232, 244, 0.48);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"][data-glass-tint="tinted"] {
+  --bg-shell: rgba(242, 245, 250, 0.95);
+  --bg-pod: rgba(252, 253, 255, 0.92);
+  --bg-canvas: rgba(236, 240, 247, 0.92);
+  --bg-card: rgba(252, 253, 255, 0.92);
+  --bg-panel: rgba(244, 247, 252, 0.94);
+  --bg-inset: rgba(228, 233, 242, 0.9);
 }
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .custom-select-opt {
