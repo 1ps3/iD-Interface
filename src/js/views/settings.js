@@ -231,12 +231,12 @@ export function createSettingsView(container, store, callbacks = {}) {
         <select class="dock-select" id="setSr"></select>
       </div>
       <div class="setting-pill-card">
-        <span class="micro-label">CLOCK SOURCE</span>
-        <select class="dock-select" id="setClk"></select>
-      </div>
-      <div class="setting-pill-card">
         <span class="micro-label">BUFFER SIZE</span>
         <select class="dock-select" id="setBuf"></select>
+      </div>
+      <div class="setting-pill-card">
+        <span class="micro-label">CLOCK SOURCE</span>
+        <select class="dock-select" id="setClk"></select>
       </div>
     `;
 
@@ -421,6 +421,9 @@ export function createSettingsView(container, store, callbacks = {}) {
       { value: "global_mute", name: "Global Mute (All Outputs)", desc: "Mute or unmute all physical outputs (Speakers, Alt & Headphones) together" },
       { value: "bypass_dsp", name: "Bypass Input DSP (A/B)", desc: "Bypass Mic 1 & 2 EQ + Compressor together for instant wet/dry comparison" },
       { value: "toggle_scene1", name: "Toggle Scene 1", desc: "Switch between Saved Scene 1 and your Live Working Scene from the hardware button" },
+      { value: "toggle_scene2", name: "Toggle Scene 2", desc: "Switch between Saved Scene 2 and your Live Working Scene from the hardware button" },
+      { value: "toggle_scene3", name: "Toggle Scene 3", desc: "Switch between Saved Scene 3 and your Live Working Scene from the hardware button" },
+      { value: "toggle_scene4", name: "Toggle Scene 4", desc: "Switch between Saved Scene 4 and your Live Working Scene from the hardware button" },
     ];
     const syncFn = () => {
       const vm = store.getVm(p.fnKeyMode);

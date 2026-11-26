@@ -65,6 +65,9 @@ enum CustomFnMode {
     GlobalMute,
     BypassDsp,
     ToggleScene1,
+    ToggleScene2,
+    ToggleScene3,
+    ToggleScene4,
 }
 
 impl Default for CustomFnMode {
@@ -168,6 +171,8 @@ struct AdmStore {
     global_mute_path: Option<Vec<usize>>,
     dsp_bypass_paths: Vec<Vec<usize>>,
     prev_main_vol_before_ref: Option<f64>,
+    last_fn_active: Option<bool>,
+    last_fn_scene_trigger: Option<std::time::Instant>,
     custom_fn_mode: CustomFnMode,
     config: PersistedConfig,
     startup_restored: bool,
@@ -208,6 +213,8 @@ impl AdmStore {
             global_mute_path: None,
             dsp_bypass_paths: Vec::new(),
             prev_main_vol_before_ref: None,
+            last_fn_active: None,
+            last_fn_scene_trigger: None,
             custom_fn_mode,
             config: cfg,
             startup_restored: false,
@@ -513,7 +520,11 @@ impl AdmStore {
                     .unwrap_or(0)
                     != 0
             }),
-            CustomFnMode::ToggleScene1 | CustomFnMode::None => false,
+            CustomFnMode::ToggleScene1
+            | CustomFnMode::ToggleScene2
+            | CustomFnMode::ToggleScene3
+            | CustomFnMode::ToggleScene4
+            | CustomFnMode::None => false,
         }
     }
 
@@ -568,9 +579,11 @@ impl AdmStore {
             CustomFnMode::RefLevel => {
                 let mv_path = self.main_vol_path.clone();
                 if active {
-                    let cur = self.get_f64_val(&self.main_vol_path, -35.0);
+                    if self.prev_main_vol_before_ref.is_none() {
+                        let cur = self.get_f64_val(&self.main_vol_path, -35.0);
+                        self.prev_main_vol_before_ref = Some(cur);
+                    }
                     let target = self.get_f64_val(&self.ref_vol_path, -18.0);
-                    self.prev_main_vol_before_ref = Some(cur);
                     set_val(&mut self.root, mv_path, JuceVar::Double(target));
                 } else if let Some(prev) = self.prev_main_vol_before_ref.take() {
                     set_val(&mut self.root, mv_path, JuceVar::Double(prev));
@@ -586,8 +599,25 @@ impl AdmStore {
                     set_val(&mut self.root, Some(tp), JuceVar::Int(bit));
                 }
             }
-            CustomFnMode::ToggleScene1 => {
-                scene_toggle = Some(0);
+            CustomFnMode::ToggleScene1
+            | CustomFnMode::ToggleScene2
+            | CustomFnMode::ToggleScene3
+            | CustomFnMode::ToggleScene4 => {
+                let now = std::time::Instant::now();
+                let too_fast = self
+                    .last_fn_scene_trigger
+                    .map(|t| now.duration_since(t) < Duration::from_millis(250))
+                    .unwrap_or(false);
+                if !too_fast {
+                    self.last_fn_scene_trigger = Some(now);
+                    scene_toggle = Some(match self.custom_fn_mode {
+                        CustomFnMode::ToggleScene1 => 0,
+                        CustomFnMode::ToggleScene2 => 1,
+                        CustomFnMode::ToggleScene3 => 2,
+                        CustomFnMode::ToggleScene4 => 3,
+                        _ => 0,
+                    });
+                }
             }
         }
         for (tp, val) in &cmds {
@@ -806,6 +836,7 @@ impl AdmStore {
         }
         self.device_path = device_path;
         self.root = Some(tree);
+        self.last_fn_active = Some(self.get_int_val(&self.fn_active_path) != 0);
     }
 
     fn coerce_property_value(
@@ -2914,10 +2945,14 @@ async fn run_direct_usb_session(
                             if st.custom_fn_mode != CustomFnMode::None
                                 && st.fn_active_path.as_ref() == Some(&path)
                             {
-                                if let Some(active) = value.as_i64() {
-                                    let (cmds, sc) = st.apply_custom_fn_trigger(active != 0);
-                                    auto_cmds.extend(cmds);
-                                    scene_toggle = sc;
+                                if let Some(active_raw) = value.as_i64() {
+                                    let active = active_raw != 0;
+                                    if st.last_fn_active != Some(active) {
+                                        st.last_fn_active = Some(active);
+                                        let (cmds, sc) = st.apply_custom_fn_trigger(active);
+                                        auto_cmds.extend(cmds);
+                                        scene_toggle = sc;
+                                    }
                                 }
                             }
 

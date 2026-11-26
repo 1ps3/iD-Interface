@@ -2590,7 +2590,10 @@ pub fn poll_hardware_events(
             }
             _ => {
                 let v = hw_get_u8(dev, entity, cs, ch, 0) as i32;
-                ctx.last_watched.insert(key, v);
+                let prev = ctx.last_watched.insert(key, v);
+                if prev == Some(v) {
+                    continue;
+                }
                 JuceVar::Int(v)
             }
         };
