@@ -3501,10 +3501,11 @@ html.is-snapped body {
 .rt-eq-panel {
   flex: 1 1 auto;
   min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 6px;
+  padding: 8px 10px;
   border-radius: 14px;
   background: var(--bg-inset);
   border: 1px solid var(--border);
@@ -3515,6 +3516,7 @@ html.is-snapped body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .rt-eq-spk-tabs,
@@ -3527,7 +3529,7 @@ html.is-snapped body {
 .rt-eq-oled {
   position: relative;
   flex: 1 1 auto;
-  min-height: 145px;
+  min-height: 112px;
   background: #0a0a0d;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -3543,6 +3545,7 @@ html.is-snapped body {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 5px;
+  flex-shrink: 0;
 }
 
 .rt-eq-controls {
@@ -3550,6 +3553,7 @@ html.is-snapped body {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .rt-eq-controls .rt-insp-ctrl {
@@ -3559,9 +3563,10 @@ html.is-snapped body {
 .rt-profiles-section {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding-top: 6px;
+  gap: 5px;
+  padding-top: 5px;
   border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
 }
 
 .rt-profiles-head {
@@ -3579,15 +3584,15 @@ html.is-snapped body {
 .rt-profile-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
 }
 
 .rt-profile-card {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 6px 8px;
-  border-radius: 10px;
+  gap: 4px;
+  padding: 5px 7px;
+  border-radius: 9px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   cursor: pointer;
@@ -3621,29 +3626,30 @@ html.is-snapped body {
 }
 
 .rt-profile-save-btn {
-  border: 1px solid var(--border);
-  background: var(--bg-inset);
-  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-hover);
+  color: var(--text-primary);
   font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.6px;
-  padding: 1px 6px;
+  padding: 2px 7px;
   border-radius: 6px;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .rt-profile-save-btn:hover {
-  color: var(--text-primary);
-  border-color: var(--border-strong);
+  background: var(--mac-accent, #2dd4bf);
+  color: var(--mac-accent-fg, #0c0c0e);
+  border-color: transparent;
 }
 
 .rt-profile-card-oled {
   width: 100%;
-  height: 30px;
+  height: 22px;
   background: #0a0a0d;
   border: 1px solid var(--border-subtle);
-  border-radius: 7px;
+  border-radius: 6px;
   overflow: hidden;
   padding: 2px;
 }
@@ -6485,7 +6491,8 @@ html.is-snapped body {
 :root[data-light-ui="true"] .preamp-comp-gr,
 :root[data-light-ui="true"] .comp-gr-oled,
 :root[data-light-ui="true"] .eq-oled-wrap,
-:root[data-light-ui="true"] .rt-eq-oled {
+:root[data-light-ui="true"] .rt-eq-oled,
+:root[data-light-ui="true"] .rt-profile-card-oled {
   background: #14161c;
   border-color: #c2c8d5;
 }
@@ -6557,6 +6564,11 @@ html.is-snapped body {
     0 0 0 4px #212126;
   --accent-danger: #ffffff;
   --accent-ok: #e4e4e8;
+}
+
+:root[data-theme="mono"] .rt-profile-card.active {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
 }
 
 :root[data-theme="mono"] .mixer-pair,
@@ -7068,7 +7080,8 @@ html.tray-menu-page body {
 :root[data-theme="liquidglass"] .preamp-card,
 :root[data-theme="liquidglass"] .routing-card,
 :root[data-theme="liquidglass"] .room-card,
-:root[data-theme="liquidglass"] .rt-eq-panel {
+:root[data-theme="liquidglass"] .rt-eq-panel,
+:root[data-theme="liquidglass"] .rt-profile-card {
   border-radius: 14px;
   background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.015) 100%);
   -webkit-backdrop-filter: blur(22px) saturate(175%);
@@ -7373,6 +7386,7 @@ html.tray-menu-page body {
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .routing-card,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .room-card,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .rt-eq-panel,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .rt-profile-card,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .dsp-card,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .mon-meter-bay,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .phys-out-item {
