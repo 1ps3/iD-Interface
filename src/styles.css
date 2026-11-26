@@ -7176,81 +7176,78 @@ html.tray-menu-page body {
   color: #c62828;
 }
 
-/* --- 10 · MACOS LIQUID GLASS (SAFARI-STYLE ADAPTIVE SYSTEM LIGHT / DARK) --- */
+/* --- 10 · MACOS LIQUID GLASS (APPLE MUSIC SIDEBAR GLASS · ADAPTIVE LIGHT / DARK) --- */
 :root[data-theme="liquidglass"] {
   --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif;
   --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
   --font-mono: "SF Mono", ui-monospace, Menlo, monospace;
-  --bg-shell: rgba(28, 30, 37, 0.9);
-  --shell-tex:
-    radial-gradient(88% 60% at 14% 0%, rgba(120, 196, 255, 0.11) 0%, transparent 56%),
-    radial-gradient(72% 52% at 88% 100%, rgba(160, 132, 255, 0.09) 0%, transparent 56%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
-  --bg-pod: rgba(38, 41, 51, 0.87);
-  --bg-canvas: rgba(25, 27, 34, 0.84);
-  --bg-card: rgba(45, 49, 60, 0.86);
-  --bg-panel: rgba(54, 59, 72, 0.88);
-  --bg-inset: rgba(36, 39, 48, 0.85);
-  --bg-hover: rgba(255, 255, 255, 0.12);
-  --border: rgba(255, 255, 255, 0.14);
-  --border-subtle: rgba(255, 255, 255, 0.085);
-  --border-strong: rgba(255, 255, 255, 0.26);
+  --bg-shell: rgba(28, 28, 30, 0.97);
+  --shell-tex: none;
+  --bg-pod: rgba(44, 44, 48, 0.9);
+  --bg-canvas: rgba(26, 26, 28, 0.95);
+  --bg-card: rgba(44, 44, 48, 0.9);
+  --bg-panel: rgba(52, 52, 56, 0.92);
+  --bg-inset: rgba(36, 36, 40, 0.9);
+  --bg-hover: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.13);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.22);
   --double-ring:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    inset 0 -0.5px 0 rgba(255, 255, 255, 0.06),
-    0 8px 24px rgba(0, 0, 0, 0.28);
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -0.5px 0 rgba(255, 255, 255, 0.05),
+    0 10px 28px rgba(0, 0, 0, 0.34);
   --float-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    0 12px 32px rgba(0, 0, 0, 0.38);
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 14px 36px rgba(0, 0, 0, 0.42);
   --text-primary: rgba(255, 255, 255, 0.94);
-  --text-secondary: rgba(235, 240, 252, 0.74);
-  --text-muted: rgba(215, 224, 242, 0.5);
+  --text-secondary: rgba(235, 235, 245, 0.7);
+  --text-muted: rgba(235, 235, 245, 0.46);
   --accent-ok: #30d158;
   --accent-warn: #ffd60a;
   --accent-danger: #ff453a;
-  --dial-top: #454b5c;
-  --dial-mid: #303543;
-  --dial-bot: #222632;
-  --dial-stroke: rgba(255, 255, 255, 0.22);
-  --dial-track-bg: rgba(255, 255, 255, 0.15);
+  --dial-top: #44444a;
+  --dial-mid: #313136;
+  --dial-bot: #232327;
+  --dial-stroke: rgba(255, 255, 255, 0.2);
+  --dial-track-bg: rgba(255, 255, 255, 0.14);
   --dial-ptr: var(--mac-accent, #0a84ff);
   --dial-track-act: var(--mac-accent, #0a84ff);
-  --hw-bg-top: rgba(50, 55, 68, 0.88);
-  --hw-bg-bot: rgba(30, 33, 42, 0.9);
-  --hw-border: rgba(255, 255, 255, 0.22);
-  --hw-disc: rgba(26, 29, 38, 0.82);
-  --hw-disc-stroke: rgba(255, 255, 255, 0.16);
-  --hw-knob-top: #464d60;
-  --hw-knob-mid: #313746;
-  --hw-knob-bot: #232734;
-  --hw-well-bg: rgba(24, 27, 35, 0.74);
-  --hw-well-border: rgba(255, 255, 255, 0.14);
-  --hw-btn-top: rgba(255, 255, 255, 0.15);
-  --hw-btn-bot: rgba(255, 255, 255, 0.06);
-  --hw-btn-border: rgba(255, 255, 255, 0.18);
-  --hw-btn-fg: #f0f4ff;
+  --hw-bg-top: rgba(48, 48, 52, 0.9);
+  --hw-bg-bot: rgba(30, 30, 34, 0.92);
+  --hw-border: rgba(255, 255, 255, 0.2);
+  --hw-disc: rgba(26, 26, 30, 0.84);
+  --hw-disc-stroke: rgba(255, 255, 255, 0.15);
+  --hw-knob-top: #46464c;
+  --hw-knob-mid: #323237;
+  --hw-knob-bot: #242428;
+  --hw-well-bg: rgba(24, 24, 28, 0.76);
+  --hw-well-border: rgba(255, 255, 255, 0.13);
+  --hw-btn-top: rgba(255, 255, 255, 0.14);
+  --hw-btn-bot: rgba(255, 255, 255, 0.05);
+  --hw-btn-border: rgba(255, 255, 255, 0.16);
+  --hw-btn-fg: #f2f2f7;
   --hw-meter-bg: rgba(255, 255, 255, 0.1);
-  --hw-meter-border: rgba(255, 255, 255, 0.15);
+  --hw-meter-border: rgba(255, 255, 255, 0.14);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Automatic macOS Clear vs Tinted (Reduce Transparency) — refined, never overly see-through */
+/* Automatic macOS Clear vs Tinted (Reduce Transparency) — Apple Music frosted glass */
 :root[data-theme="liquidglass"][data-glass-tint="clear"] {
-  --bg-shell: rgba(28, 30, 37, 0.89);
-  --bg-pod: rgba(38, 41, 51, 0.86);
-  --bg-canvas: rgba(25, 27, 34, 0.82);
-  --bg-card: rgba(45, 49, 60, 0.85);
-  --bg-panel: rgba(54, 59, 72, 0.88);
-  --bg-inset: rgba(36, 39, 48, 0.84);
+  --bg-shell: rgba(28, 28, 30, 0.96);
+  --bg-pod: rgba(44, 44, 48, 0.88);
+  --bg-canvas: rgba(26, 26, 28, 0.94);
+  --bg-card: rgba(44, 44, 48, 0.88);
+  --bg-panel: rgba(52, 52, 56, 0.91);
+  --bg-inset: rgba(36, 36, 40, 0.89);
 }
 
 :root[data-theme="liquidglass"][data-glass-tint="tinted"] {
-  --bg-shell: rgba(30, 32, 39, 0.96);
-  --bg-pod: rgba(41, 44, 53, 0.94);
-  --bg-canvas: rgba(27, 29, 36, 0.94);
-  --bg-card: rgba(48, 52, 62, 0.93);
-  --bg-panel: rgba(56, 60, 72, 0.94);
-  --bg-inset: rgba(38, 41, 49, 0.92);
+  --bg-shell: rgba(28, 28, 30, 0.99);
+  --bg-pod: rgba(44, 44, 48, 0.97);
+  --bg-canvas: rgba(26, 26, 28, 0.98);
+  --bg-card: rgba(44, 44, 48, 0.97);
+  --bg-panel: rgba(52, 52, 56, 0.98);
+  --bg-inset: rgba(36, 36, 40, 0.96);
 }
 
 :root[data-theme="liquidglass"] .app-shell {
@@ -7477,16 +7474,17 @@ html.tray-menu-page body {
 }
 
 :root[data-theme="liquidglass"] .top-nav-tabs .nav-item:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
 }
 
 :root[data-theme="liquidglass"] .top-nav-tabs .nav-item.active {
-  background: rgba(255, 255, 255, 0.92);
-  color: #141821;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.16);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 1),
-    0 2px 10px rgba(0, 0, 0, 0.24);
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 2px 8px rgba(0, 0, 0, 0.22);
 }
 
 /* Liquid Glass buttons, segmented capsules, Tone/Orbit pills & selects */
@@ -7583,10 +7581,13 @@ html.tray-menu-page body {
 :root[data-theme="liquidglass"] .mon-btn.active,
 :root[data-theme="liquidglass"] .mini-pill-btn.active,
 :root[data-theme="liquidglass"] .link-pill.active {
-  background: rgba(255, 255, 255, 0.92);
-  color: #141821;
-  border-color: transparent;
-  box-shadow: inset 0 1px 0 #ffffff, 0 2px 8px rgba(0, 0, 0, 0.24);
+  background: rgba(255, 255, 255, 0.19);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.12) 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 2px 8px rgba(0, 0, 0, 0.22);
 }
 
 :root[data-theme="liquidglass"] .action-btn:active,
@@ -7685,31 +7686,28 @@ html.tray-menu-page body {
    MACOS LIQUID GLASS — LIGHT MODE
    ========================================================================= */
 :root[data-theme="liquidglass"][data-glass-scheme="light"] {
-  --bg-shell: rgba(238, 242, 250, 0.86);
-  --shell-tex:
-    radial-gradient(85% 65% at 16% 0%, rgba(255, 255, 255, 0.85) 0%, transparent 58%),
-    radial-gradient(70% 55% at 86% 100%, rgba(100, 210, 255, 0.14) 0%, transparent 60%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.52) 0%, rgba(235, 241, 252, 0.24) 100%);
-  --bg-pod: rgba(252, 253, 255, 0.8);
-  --bg-canvas: rgba(231, 236, 246, 0.76);
-  --bg-card: rgba(252, 253, 255, 0.82);
-  --bg-panel: rgba(244, 247, 253, 0.84);
-  --bg-inset: rgba(224, 230, 242, 0.76);
-  --bg-hover: rgba(15, 23, 42, 0.07);
-  --border: rgba(25, 35, 55, 0.12);
-  --border-subtle: rgba(25, 35, 55, 0.075);
-  --border-strong: rgba(25, 35, 55, 0.2);
+  --bg-shell: rgba(245, 245, 247, 0.97);
+  --shell-tex: none;
+  --bg-pod: rgba(255, 255, 255, 0.88);
+  --bg-canvas: rgba(242, 242, 246, 0.94);
+  --bg-card: rgba(255, 255, 255, 0.88);
+  --bg-panel: rgba(248, 248, 250, 0.92);
+  --bg-inset: rgba(235, 235, 240, 0.88);
+  --bg-hover: rgba(0, 0, 0, 0.055);
+  --border: rgba(0, 0, 0, 0.09);
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-strong: rgba(0, 0, 0, 0.16);
   --accent-ok: #34c759;
   --accent-danger: #ff3b30;
   --double-ring:
-    inset 0 1px 0 rgba(255, 255, 255, 0.94),
-    0 6px 20px rgba(18, 28, 48, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 8px 24px rgba(0, 0, 0, 0.075);
   --float-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.96),
-    0 12px 28px rgba(18, 28, 48, 0.13);
-  --text-primary: #141821;
-  --text-secondary: rgba(20, 26, 40, 0.68);
-  --text-muted: rgba(20, 26, 40, 0.48);
+    0 12px 30px rgba(0, 0, 0, 0.12);
+  --text-primary: #1d1d1f;
+  --text-secondary: rgba(29, 29, 31, 0.68);
+  --text-muted: rgba(29, 29, 31, 0.46);
   --dial-top: #ffffff;
   --dial-mid: #eef2fa;
   --dial-bot: #d9e1f0;
@@ -7747,21 +7745,21 @@ html.tray-menu-page body {
 
 /* Liquid Glass Light: Clear vs Tinted (auto from macOS Reduce Transparency) */
 :root[data-theme="liquidglass"][data-glass-scheme="light"][data-glass-tint="clear"] {
-  --bg-shell: rgba(238, 242, 250, 0.86);
-  --bg-pod: rgba(252, 253, 255, 0.8);
-  --bg-canvas: rgba(231, 236, 246, 0.76);
-  --bg-card: rgba(252, 253, 255, 0.82);
-  --bg-panel: rgba(244, 247, 253, 0.84);
-  --bg-inset: rgba(224, 230, 242, 0.76);
+  --bg-shell: rgba(245, 245, 247, 0.96);
+  --bg-pod: rgba(255, 255, 255, 0.88);
+  --bg-canvas: rgba(242, 242, 246, 0.94);
+  --bg-card: rgba(255, 255, 255, 0.88);
+  --bg-panel: rgba(248, 248, 250, 0.92);
+  --bg-inset: rgba(235, 235, 240, 0.88);
 }
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"][data-glass-tint="tinted"] {
-  --bg-shell: rgba(240, 243, 249, 0.96);
-  --bg-pod: rgba(252, 253, 255, 0.95);
-  --bg-canvas: rgba(234, 238, 245, 0.95);
-  --bg-card: rgba(252, 253, 255, 0.95);
-  --bg-panel: rgba(244, 247, 252, 0.95);
-  --bg-inset: rgba(226, 231, 240, 0.93);
+  --bg-shell: rgba(245, 245, 247, 0.99);
+  --bg-pod: rgba(255, 255, 255, 0.97);
+  --bg-canvas: rgba(242, 242, 246, 0.98);
+  --bg-card: rgba(255, 255, 255, 0.97);
+  --bg-panel: rgba(248, 248, 250, 0.98);
+  --bg-inset: rgba(235, 235, 240, 0.96);
 }
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .app-shell {
@@ -7905,22 +7903,22 @@ html.tray-menu-page body {
 }
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .top-nav-tabs {
-  background: rgba(20, 30, 50, 0.065);
-  border-color: rgba(25, 35, 55, 0.1);
+  background: rgba(0, 0, 0, 0.055);
+  border-color: rgba(0, 0, 0, 0.08);
   box-shadow:
-    inset 0 1px 2px rgba(18, 28, 48, 0.06),
+    inset 0 1px 2px rgba(0, 0, 0, 0.05),
     0 1px 4px rgba(255, 255, 255, 0.7);
 }
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .top-nav-tabs .nav-item:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.62);
-  color: #141821;
+  background: rgba(0, 0, 0, 0.045);
+  color: #1d1d1f;
 }
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .top-nav-tabs .nav-item.active {
-  background: #ffffff;
-  color: #141821;
-  box-shadow: 0 2px 8px rgba(18, 28, 48, 0.12);
+  background: rgba(0, 0, 0, 0.095);
+  color: #1d1d1f;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .topbar {
@@ -7978,10 +7976,11 @@ html.tray-menu-page body {
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .mon-btn.active,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-pill-btn.active,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .link-pill.active {
-  background: #141821;
-  color: #ffffff;
-  border-color: transparent;
-  box-shadow: 0 2px 8px rgba(18, 28, 48, 0.18);
+  background: rgba(0, 0, 0, 0.1);
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.07) 0%, rgba(0, 0, 0, 0.12) 100%);
+  color: #1d1d1f;
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .ms-btn.mute-btn.active,
@@ -8043,10 +8042,10 @@ html.tray-menu-page body {
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .seg-btn.active,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .bus-tab.active {
-  background: #ffffff;
-  color: #141821;
+  background: rgba(0, 0, 0, 0.095);
+  color: #1d1d1f;
   border-color: transparent;
-  box-shadow: 0 2px 7px rgba(18, 28, 48, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .bus-vol-inline,
