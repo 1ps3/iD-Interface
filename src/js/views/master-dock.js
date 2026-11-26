@@ -64,7 +64,7 @@ export function createMasterDock(container, store) {
         <button class="mon-btn" id="btnRef">REF</button>
       </div>
 
-      <div class="dock-guard-strip" id="dockGuardStrip" hidden></div>
+      <div class="dock-guard-strip" id="dockGuardStrip"></div>
     </div>
 
     <div class="dock-divider"></div>
@@ -240,7 +240,6 @@ export function createMasterDock(container, store) {
     if (isAtRef && !isMuted) guards.push({ label: `REF ${Math.round(refVol)}dB`, cls: "guard-ref", path: null });
 
     if (guards.length > 0) {
-      guardStrip.hidden = false;
       guardStrip.innerHTML = guards
         .map(
           (g, idx) =>
@@ -252,7 +251,6 @@ export function createMasterDock(container, store) {
         if (g?.path) b.addEventListener("click", () => store.toggleParam(g.path));
       });
     } else {
-      guardStrip.hidden = true;
       guardStrip.innerHTML = "";
     }
 
