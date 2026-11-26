@@ -4551,8 +4551,8 @@ html.is-snapped body {
 .settings-top-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 14px;
+  margin-bottom: 14px;
   flex-shrink: 0;
 }
 
@@ -4561,20 +4561,20 @@ html.is-snapped body {
   background: var(--bg-card);
   border: 1px solid transparent;
   box-shadow: var(--double-ring);
-  border-radius: 14px;
-  padding: 8px 11px;
+  border-radius: 16px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   overflow: hidden;
 }
 
 .settings-columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 14px;
   flex-shrink: 0;
-  padding-bottom: 8px;
+  padding-bottom: 10px;
 }
 
 .settings-col {
@@ -4582,18 +4582,18 @@ html.is-snapped body {
   background: var(--bg-card);
   border: 1px solid transparent;
   box-shadow: var(--double-ring);
-  border-radius: 15px;
-  padding: 10px 11px;
+  border-radius: 16px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   overflow: hidden;
 }
 
 .settings-knob-pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
+  gap: 8px;
 }
 
 .settings-card-row {
@@ -5749,9 +5749,9 @@ html.is-snapped body {
   background: var(--bg-card);
   border: 1px solid transparent;
   box-shadow: var(--double-ring);
-  border-radius: 15px;
-  padding: 10px 12px;
-  margin-bottom: 10px;
+  border-radius: 16px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
