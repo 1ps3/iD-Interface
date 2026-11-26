@@ -8115,3 +8115,36 @@ html.tray-menu-page body {
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .tray-menu-item.is-danger:hover .tray-ico {
   color: #d70015;
 }
+
+/* =========================================================================
+   EXPERIMENT: NO DOUBLE OUTLINE ON MIXER CARDS (NON-LIQUIDGLASS / WINDOWS)
+   ========================================================================= */
+:root:not([data-theme="liquidglass"]) .mixer-pair,
+:root:not([data-theme="liquidglass"]) .channel-inspector,
+:root:not([data-theme="liquidglass"]) .master-dock {
+  --double-ring:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 28px rgba(0, 0, 0, 0.42),
+    0 2px 6px rgba(0, 0, 0, 0.28),
+    0 0 0 3px rgba(0, 0, 0, 0),
+    0 0 0 4px rgba(0, 0, 0, 0);
+  border-color: transparent !important;
+  box-shadow: var(--double-ring) !important;
+}
+
+:root:not([data-theme="liquidglass"]) .mixer-pair::after,
+:root:not([data-theme="liquidglass"]) .channel-inspector::after,
+:root:not([data-theme="liquidglass"]) .master-dock::after {
+  opacity: 0 !important;
+}
+
+:root:not([data-theme="liquidglass"])[data-light-ui="true"] .mixer-pair,
+:root:not([data-theme="liquidglass"])[data-light-ui="true"] .channel-inspector,
+:root:not([data-theme="liquidglass"])[data-light-ui="true"] .master-dock {
+  --double-ring:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 10px 26px rgba(18, 28, 48, 0.11),
+    0 2px 6px rgba(18, 28, 48, 0.06),
+    0 0 0 3px rgba(0, 0, 0, 0),
+    0 0 0 4px rgba(0, 0, 0, 0);
+}
