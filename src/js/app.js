@@ -195,33 +195,7 @@ async function syncMaximizeBtn() {
   }
 }
 
-const macTrafficLights = document.getElementById("macTrafficLights");
-const btnMacMin = document.getElementById("btnMacMin");
-const btnMacMax = document.getElementById("btnMacMax");
 if (isMacOS) document.documentElement.dataset.platform = "macos";
-
-// Bulletproof hover & focus tracking via bounding-box hit test so macOS WKWebView
-// always shows traffic-light glyphs on hover and never leaves them stuck.
-if (macTrafficLights) {
-  const clearMacTlHover = () => macTrafficLights.classList.remove("is-hovered");
-  const syncMacTlHover = (x, y) => {
-    const r = macTrafficLights.getBoundingClientRect();
-    const inside = r.width > 0 && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
-    macTrafficLights.classList.toggle("is-hovered", inside);
-  };
-  macTrafficLights.addEventListener("mousedown", (e) => e.stopPropagation());
-  macTrafficLights.addEventListener("mouseenter", () => macTrafficLights.classList.add("is-hovered"));
-  macTrafficLights.addEventListener("mouseleave", clearMacTlHover);
-  document.addEventListener("mousemove", (e) => syncMacTlHover(e.clientX, e.clientY), { passive: true });
-  document.addEventListener("mouseleave", clearMacTlHover);
-  window.addEventListener("blur", () => {
-    clearMacTlHover();
-    macTrafficLights.classList.add("is-unfocused");
-  });
-  window.addEventListener("focus", () => {
-    macTrafficLights.classList.remove("is-unfocused");
-  });
-}
 
 const handleMinimize = () => {
   invoke("minimize_window").catch(() => getCurrentWindow().minimize());
@@ -243,9 +217,7 @@ const handleMaximize = async () => {
 };
 
 document.getElementById("btnMin").addEventListener("click", handleMinimize);
-btnMacMin?.addEventListener("click", handleMinimize);
 btnMax.addEventListener("click", handleMaximize);
-btnMacMax?.addEventListener("click", handleMaximize);
 
 window.__TAURI__?.event?.listen("window-state-changed", (e) => {
   if (e?.payload) applyWindowFrameState(e.payload);

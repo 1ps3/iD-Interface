@@ -1,0 +1,21 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "iD Interface",
+        "width": 1330,
+        "height": 790,
+        "minWidth": 1330,
+        "minHeight": 790,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "transparent": true,
+        "shadow": true,
+        "resizable": true,
+        "alwaysOnTop": false
+      }
+    ]
+  }
+}

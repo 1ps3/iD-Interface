@@ -1256,6 +1256,8 @@ async fn set_window_size(
     }
     #[cfg(target_os = "windows")]
     win32_sync_dwm_frame(&window, target_full);
+    #[cfg(target_os = "macos")]
+    let _ = window.set_decorations(target_full);
 
     if let Some(can_resize) = resizable {
         let _ = window.set_resizable(can_resize);
@@ -2285,32 +2287,44 @@ async fn install_app_update(
         }
 
         let mnt_dir = std::env::temp_dir().join("id-interface-update-mnt");
+        let script_path = std::env::temp_dir().join("id-interface-updater.sh");
+        let log_path = std::env::temp_dir().join("id-interface-updater.log");
         let app_esc = app_bundle.to_string_lossy().replace('\'', "'\\''");
         let dmg_esc = tmp_dmg.to_string_lossy().replace('\'', "'\\''");
         let mnt_esc = mnt_dir.to_string_lossy().replace('\'', "'\\''");
+        let script_esc = script_path.to_string_lossy().replace('\'', "'\\''");
+        let log_esc = log_path.to_string_lossy().replace('\'', "'\\''");
         let pid = std::process::id();
         let script = format!(
-            "for i in $(seq 1 50); do kill -0 {pid} 2>/dev/null || break; sleep 0.1; done; \
-             rm -rf '{mnt}'; mkdir -p '{mnt}'; \
-             hdiutil attach '{dmg}' -nobrowse -quiet -mountpoint '{mnt}' || exit 1; \
-             NEW_APP=$(find '{mnt}' -maxdepth 1 -name '*.app' | head -n 1); \
-             if [ -n \"$NEW_APP\" ]; then \
-               rm -rf '{app}' && ditto \"$NEW_APP\" '{app}' && xattr -cr '{app}' 2>/dev/null || true; \
-             fi; \
-             hdiutil detach '{mnt}' -quiet 2>/dev/null || true; \
-             rm -rf '{mnt}' '{dmg}'; \
-             sleep 0.3; \
-             open '{app}' || open -n '{app}'",
+            "#!/bin/sh\n\
+             for i in $(seq 1 60); do kill -0 {pid} 2>/dev/null || break; sleep 0.1; done\n\
+             rm -rf '{mnt}'\n\
+             mkdir -p '{mnt}'\n\
+             hdiutil attach '{dmg}' -nobrowse -quiet -mountpoint '{mnt}' || exit 1\n\
+             NEW_APP=$(find '{mnt}' -maxdepth 2 -name '*.app' | head -n 1)\n\
+             if [ -n \"$NEW_APP\" ]; then\n\
+               rm -rf '{app}'\n\
+               ditto \"$NEW_APP\" '{app}'\n\
+               xattr -cr '{app}' 2>/dev/null || true\n\
+             fi\n\
+             hdiutil detach '{mnt}' -quiet 2>/dev/null || true\n\
+             rm -rf '{mnt}' '{dmg}'\n\
+             sleep 0.4\n\
+             open '{app}' || open -n '{app}'\n\
+             rm -f '{script}'\n",
             pid = pid,
             mnt = mnt_esc,
             dmg = dmg_esc,
             app = app_esc,
+            script = script_esc,
         );
 
-        // Detach cleanly from the exiting app's process group/stdio so macOS doesn't kill the updater mid-copy
-        let detached = format!("nohup sh -c '{}' >/dev/null 2>&1 &", script.replace('\'', "'\\''"));
-        std::process::Command::new("sh")
-            .args(["-c", &detached])
+        std::fs::write(&script_path, &script)
+            .map_err(|e| format!("Failed to write macOS updater script: {e}"))?;
+
+        let launch_cmd = format!("nohup /bin/sh '{}' >'{}' 2>&1 &", script_esc, log_esc);
+        std::process::Command::new("/bin/sh")
+            .args(["-c", &launch_cmd])
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
@@ -3464,6 +3478,10 @@ pub fn run() {
                 CURRENT_WINDOW_IS_FULL.store(!start_compact, Ordering::Relaxed);
                 #[cfg(target_os = "windows")]
                 win32_sync_dwm_frame(&window, !start_compact);
+                #[cfg(target_os = "macos")]
+                if start_compact {
+                    let _ = window.set_decorations(false);
+                }
                 let scale = window.scale_factor().unwrap_or(1.0);
 
                 if start_compact {
