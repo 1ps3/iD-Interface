@@ -773,8 +773,20 @@ mod transport {
                     model_name
                 },
             };
-            // Verify control endpoint is awake before reporting ready
-            if dev.vendor_in(0x01, 0x00, 0x0200, 4).is_err() {
+            // Verify control endpoint is awake before reporting ready (retry briefly after rapid Cmd+Q relaunch)
+            let mut awake = false;
+            for attempt in 0..3 {
+                if dev.vendor_in(0x01, 0x00, 0x0200, 4).is_ok()
+                    || dev.vendor_in(0x01, 0x04, 0x0A00, 2).is_ok()
+                {
+                    awake = true;
+                    break;
+                }
+                if attempt < 2 {
+                    std::thread::sleep(std::time::Duration::from_millis(60));
+                }
+            }
+            if !awake {
                 return Err("Audient MK3 device still initializing".into());
             }
             Ok(dev)

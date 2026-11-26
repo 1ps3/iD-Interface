@@ -1119,6 +1119,7 @@ async fn set_custom_fn_mode(
 
 static CURRENT_WINDOW_IS_FULL: AtomicBool = AtomicBool::new(true);
 static WINDOW_LAYOUT_READY: AtomicBool = AtomicBool::new(false);
+static APP_EXITING: AtomicBool = AtomicBool::new(false);
 
 fn current_window_mode_str() -> &'static str {
     if CURRENT_WINDOW_IS_FULL.load(Ordering::Relaxed) {
@@ -2719,7 +2720,7 @@ async fn run_direct_usb_session(
 
         let mut had_disconnected = false;
 
-        while !stop_worker.load(Ordering::Relaxed) {
+        while !stop_worker.load(Ordering::Relaxed) && !APP_EXITING.load(Ordering::Relaxed) {
             let Ok(dev) = api.open_first() else {
                 had_disconnected = true;
                 let _ = usb_ev_tx.send(UsbEvent::Disconnected);
@@ -2732,7 +2733,7 @@ async fn run_direct_usb_session(
             if had_disconnected {
                 drop(dev);
                 std::thread::sleep(Duration::from_millis(1800));
-                if stop_worker.load(Ordering::Relaxed) {
+                if stop_worker.load(Ordering::Relaxed) || APP_EXITING.load(Ordering::Relaxed) {
                     break;
                 }
                 let Ok(ready_dev) = api.open_first() else {
@@ -2757,7 +2758,7 @@ async fn run_direct_usb_session(
                 let mut last_meter_poll = std::time::Instant::now() - Duration::from_millis(50);
                 let mut err_streak = 0u32;
 
-                while !stop_worker.load(Ordering::Relaxed) {
+                while !stop_worker.load(Ordering::Relaxed) && !APP_EXITING.load(Ordering::Relaxed) {
                     let mut latest_tree: Option<ValueTreeNode> = None;
                     let mut batch: BTreeMap<Vec<usize>, JuceVar> = BTreeMap::new();
                     let mut do_save_boot = false;
@@ -2868,7 +2869,7 @@ async fn run_direct_usb_session(
             let mut last_meter_poll = std::time::Instant::now() - Duration::from_millis(50);
             let mut err_streak = 0u32;
 
-            while !stop_worker.load(Ordering::Relaxed) {
+            while !stop_worker.load(Ordering::Relaxed) && !APP_EXITING.load(Ordering::Relaxed) {
                 // Drain all queued outbound parameter writes (coalescing duplicates per path)
                 let mut latest_tree: Option<ValueTreeNode> = None;
                 let mut batch: BTreeMap<Vec<usize>, JuceVar> = BTreeMap::new();
@@ -3745,10 +3746,19 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
-            #[cfg(target_os = "macos")]
-            if let tauri::RunEvent::Reopen { .. } = event {
-                show_main_window(app_handle);
+            match event {
+                #[cfg(target_os = "macos")]
+                tauri::RunEvent::Reopen { .. } => {
+                    show_main_window(app_handle);
+                }
+                tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit => {
+                    // Gracefully stop the Direct USB worker so macOS IOKit releases the device handle
+                    // cleanly before termination (prevents stale USB pipe on Cmd+Q -> immediate reopen).
+                    APP_EXITING.store(true, Ordering::SeqCst);
+                    std::thread::sleep(Duration::from_millis(45));
+                }
+                _ => {}
             }
-            let _ = (app_handle, event);
+            let _ = app_handle;
         });
 }

@@ -40,43 +40,41 @@ class AdmClientStore {
   }
 
   async init() {
-    listen("adm-status", (e) => {
-      const next = Boolean(e.payload);
-      const hadState = this.connected || Boolean(this.root);
-      this.connected = next;
-      if (!next && hadState) {
-        this._clearState();
-      }
-      this._statusSubs.forEach((fn) => fn(this.connected));
-    });
-
-    listen("state-snapshot", (e) => {
-      this._loadSnapshot(e.payload);
-    });
-
-    listen("param-changed", (e) => {
-      const { path, prop, value } = e.payload;
-      if (prop === "value") {
-        const slot = this._lastSent.get(pathKey(path));
-        // Ignore stale in-flight ADM echoes while the user is actively dragging/editing this param
-        if (slot && (slot.timer || performance.now() - slot.lastLocalEditMs < 240)) {
-          return;
+    await Promise.all([
+      listen("adm-status", (e) => {
+        const next = Boolean(e.payload);
+        const hadState = this.connected || Boolean(this.root);
+        this.connected = next;
+        if (!next && hadState) {
+          this._clearState();
         }
-        if (slot) slot.value = value;
-      }
-      this._applyLocal(path, prop, value);
-      this._paramSubs.forEach((fn) => fn(path, prop, value, false));
-    });
-
-    listen("meter-frame", (e) => {
-      this.meters = e.payload;
-      this._meterSubs.forEach((fn) => fn(this.meters));
-    });
-
-    listen("custom-fn-mode", (e) => {
-      this.customFnMode = e.payload || "none";
-      this._fnModeSubs.forEach((fn) => fn(this.customFnMode));
-    });
+        this._statusSubs.forEach((fn) => fn(this.connected));
+      }),
+      listen("state-snapshot", (e) => {
+        this._loadSnapshot(e.payload);
+      }),
+      listen("param-changed", (e) => {
+        const { path, prop, value } = e.payload;
+        if (prop === "value") {
+          const slot = this._lastSent.get(pathKey(path));
+          // Ignore stale in-flight ADM echoes while the user is actively dragging/editing this param
+          if (slot && (slot.timer || performance.now() - slot.lastLocalEditMs < 240)) {
+            return;
+          }
+          if (slot) slot.value = value;
+        }
+        this._applyLocal(path, prop, value);
+        this._paramSubs.forEach((fn) => fn(path, prop, value, false));
+      }),
+      listen("meter-frame", (e) => {
+        this.meters = e.payload;
+        this._meterSubs.forEach((fn) => fn(this.meters));
+      }),
+      listen("custom-fn-mode", (e) => {
+        this.customFnMode = e.payload || "none";
+        this._fnModeSubs.forEach((fn) => fn(this.customFnMode));
+      }),
+    ]);
 
     const [status, snap, customFn, uiPrefs] = await Promise.all([
       invoke("get_adm_status").catch(() => false),
@@ -93,6 +91,20 @@ class AdmClientStore {
     this._statusSubs.forEach((fn) => fn(this.connected));
     if (snap) {
       this._loadSnapshot(snap);
+    } else {
+      // Safety net: if backend finished connecting right as WebView mounted, pull snapshot once
+      setTimeout(async () => {
+        if (this.root) return;
+        const [lateStatus, lateSnap] = await Promise.all([
+          invoke("get_adm_status").catch(() => false),
+          invoke("get_full_state").catch(() => null),
+        ]);
+        if (lateSnap && !this.root) {
+          this.connected = Boolean(lateStatus || true);
+          this._statusSubs.forEach((fn) => fn(this.connected));
+          this._loadSnapshot(lateSnap);
+        }
+      }, 900);
     }
   }
 
