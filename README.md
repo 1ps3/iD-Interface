@@ -108,3 +108,16 @@ Outputs a Universal `.app` and `.dmg` in `src-tauri/target/universal-apple-darwi
 
 ## License & Disclaimer
 [MIT](LICENSE). Independent community project — not affiliated with or endorsed by Audient Ltd.
+
+---
+
+## FAQ
+
+**Does iD Interface replace Audient iD Control / Audient Device Manager (ADM)?**
+Yes — on both **Windows** and **macOS**, iD Interface runs completely standalone over **Direct USB** without needing `AudientDeviceManager`, `iD Control`, or Apple Bonjour running in the background. (You can still switch to ADM mode in Settings if you prefer.)
+
+**Which Audient audio interfaces are supported?**
+iD Interface is built specifically for the 4 **Audient iD MK3** models: **Audient iD1**, **Audient iD2**, **Audient iD2+**, and **Audient iD4+**. Legacy MK1/MK2 models (iD4, iD14, iD24, iD44) use an older protocol and are not supported.
+
+**How do updates work?**
+iD Interface checks GitHub Releases automatically and shows an **`UPDATE`** badge when a new version is out. Clicking it downloads, installs, and restarts the app automatically on both Windows and macOS.
