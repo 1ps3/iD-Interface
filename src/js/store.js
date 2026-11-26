@@ -41,7 +41,12 @@ class AdmClientStore {
 
   async init() {
     listen("adm-status", (e) => {
-      this.connected = Boolean(e.payload);
+      const next = Boolean(e.payload);
+      const hadState = this.connected || Boolean(this.root);
+      this.connected = next;
+      if (!next && hadState) {
+        this._clearState();
+      }
       this._statusSubs.forEach((fn) => fn(this.connected));
     });
 
@@ -165,6 +170,16 @@ class AdmClientStore {
   onMeters(fn) {
     this._meterSubs.add(fn);
     return () => this._meterSubs.delete(fn);
+  }
+
+  _clearState() {
+    this._lastSent.forEach((s) => s.timer && clearTimeout(s.timer));
+    this._lastSent.clear();
+    this.root = null;
+    this.devicePath = null;
+    this.paths = {};
+    this.vmMap.clear();
+    this._snapshotSubs.forEach((fn) => fn(this));
   }
 
   _loadSnapshot(snap) {

@@ -1796,7 +1796,7 @@ export function createMixerView(container, store) {
 
     const mixerPath = store.paths.mixer;
     if (!mixerPath) {
-      stripsEl.innerHTML = `<div class="phase-placeholder"><span class="phase-tag">WAITING FOR DEVICE</span><h3>Connecting to AudientDeviceManager…</h3></div>`;
+      stripsEl.innerHTML = `<div class="phase-placeholder"><span class="phase-tag">WAITING FOR DEVICE</span><h3>Searching for Audient iD MK3…</h3></div>`;
       return;
     }
 

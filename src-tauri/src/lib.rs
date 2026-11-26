@@ -2435,7 +2435,12 @@ fn spawn_mdns_browser(addr_tx: watch::Sender<Option<SocketAddr>>) {
 }
 
 async fn emit_disconnected(app: &AppHandle, store: &Arc<Mutex<AdmStore>>) {
-    store.lock().await.connected = false;
+    {
+        let mut st = store.lock().await;
+        st.connected = false;
+        st.root = None;
+        st.device_path = None;
+    }
     let silent = MeterFrame::silent();
     let _ = app.emit("adm-status", false);
     let _ = app.emit("meter-levels", silent.main_stereo());
