@@ -285,6 +285,14 @@ pub enum HwBinding {
     RoomSpkTrim { ch: u8 },
     RoomSpkDelay { ch: u8 },
     RoomSpkDelayOn { ch: u8, dly_path: Vec<usize> },
+    RoomEqBand {
+        ch: u8,
+        cs: u8,
+        t_path: Vec<usize>,
+        f_path: Vec<usize>,
+        g_path: Vec<usize>,
+        q_path: Vec<usize>,
+    },
 }
 
 /// Reverse lookup key for hardware change events `[cs, ch, 0, entity]`
@@ -1215,6 +1223,19 @@ fn hw_get_u32(dev: &TusbDevice<'_>, ent: u8, cs: u8, ch: u8, default: u32) -> u3
         .unwrap_or(default)
 }
 
+fn hw_get_room_eq_band(dev: &TusbDevice<'_>, cs: u8, ch: u8, def_t: i32, def_f: f64, def_q: f64) -> (i32, f64, f64, f64) {
+    if let Ok(b) = dev.vendor_in(BREQ_PARAM, ENT_ROOM, ((cs as u16) << 8) | (ch as u16), 8) {
+        if b.len() >= 8 {
+            let t = u16::from_le_bytes([b[0], b[1]]) as i32;
+            let f = u16::from_le_bytes([b[2], b[3]]) as f64;
+            let g = q88_to_db(&b[4..6]);
+            let q = (u16::from_le_bytes([b[6], b[7]]) as f64) / 256.0;
+            return (t, f.clamp(20.0, 20000.0), g.clamp(-12.0, 12.0), q.clamp(0.3, 12.0));
+        }
+    }
+    (def_t, def_f, 0.0, def_q)
+}
+
 fn hw_get_eq_band(dev: &TusbDevice<'_>, cs: u8, ch: u8, def_t: i32, def_f: f64, def_q: f64) -> (i32, f64, f64, f64) {
     if let Ok(b) = dev.vendor_in(BREQ_PARAM, ENT_DSP, ((cs as u16) << 8) | (ch as u16), 8) {
         if b.len() >= 8 {
@@ -1791,7 +1812,55 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
         ],
     ));
 
-    // Index 14: RoomCorrection
+    // Index 14: RoomCorrection (with 6 hardware-verified RoomTune EQ bands per speaker L/R)
+    const ROOM_EQ_SPEC: [(u8, &str, i32, f64, f64); 6] = [
+        (0x1D, "LS", 5, 80.0, 0.71),
+        (0x0B, "Band 1", 8, 250.0, 2.0),
+        (0x0C, "Band 2", 8, 600.0, 2.0),
+        (0x0D, "Band 3", 8, 1500.0, 2.0),
+        (0x0E, "Band 4", 8, 4000.0, 2.0),
+        (0x1E, "HS", 7, 8000.0, 0.71),
+    ];
+    let rc_p = [mc_p.as_slice(), &[14]].concat();
+    let build_room_eq_node = |ch: u8, spk_child_idx: usize, path_to_hw: &mut HashMap<Vec<usize>, HwBinding>| -> ValueTreeNode {
+        let eq_p = [rc_p.as_slice(), &[spk_child_idx, 5]].concat();
+        let mut bands = Vec::with_capacity(6);
+        for (bi, &(cs, label, def_t, def_f, def_q)) in ROOM_EQ_SPEC.iter().enumerate() {
+            let (bt, bf, bg, bq) = hw_get_room_eq_band(dev, cs, ch, 11, def_f, def_q);
+            let _ = def_t;
+            let bp = [eq_p.as_slice(), &[bi]].concat();
+            let t_p = [bp.as_slice(), &[0]].concat();
+            let f_p = [bp.as_slice(), &[1]].concat();
+            let g_p = [bp.as_slice(), &[2]].concat();
+            let q_p = [bp.as_slice(), &[3]].concat();
+            let bind = HwBinding::RoomEqBand {
+                ch,
+                cs,
+                t_path: t_p.clone(),
+                f_path: f_p.clone(),
+                g_path: g_p.clone(),
+                q_path: q_p.clone(),
+            };
+            path_to_hw.insert(t_p, bind.clone());
+            path_to_hw.insert(f_p, bind.clone());
+            path_to_hw.insert(g_p, bind.clone());
+            path_to_hw.insert(q_p, bind);
+            bands.push(node(
+                "Band",
+                vec![("index", JuceVar::Int(bi as i32)), ("name", JuceVar::String(label.into()))],
+                vec![
+                    param_int("T", bt, None, true),
+                    param_f64("F", bf, None, true),
+                    param_f64("G", bg, None, true),
+                    param_f64("Q", bq, None, true),
+                ],
+            ));
+        }
+        node("EQ", vec![], bands)
+    };
+    let rc_l_eq = build_room_eq_node(0, 5, &mut path_to_hw);
+    let rc_r_eq = build_room_eq_node(1, 6, &mut path_to_hw);
+
     mc_children.push(node(
         "RoomCorrection",
         vec![],
@@ -1810,6 +1879,7 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
                     param_int("DlyOn", if spk_l_dly > 0.0 { 1 } else { 0 }, None, true),
                     param_int("Mute", 0, None, true),
                     param_int("Solo", 0, None, true),
+                    rc_l_eq,
                 ],
             ),
             node(
@@ -1821,6 +1891,7 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
                     param_int("DlyOn", if spk_r_dly > 0.0 { 1 } else { 0 }, None, true),
                     param_int("Mute", 0, None, true),
                     param_int("Solo", 0, None, true),
+                    rc_r_eq,
                 ],
             ),
         ],
@@ -1851,7 +1922,6 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
     hw_to_path.insert(HwRegKey { entity: ENT_OUTPUTS, cs: 0x00, ch: 4 }, [hp1_p.as_slice(), &[0]].concat());
     hw_to_path.insert(HwRegKey { entity: ENT_OUTPUTS, cs: 0x01, ch: 4 }, [hp1_p.as_slice(), &[1]].concat());
     hw_to_path.insert(HwRegKey { entity: ENT_OUTPUTS, cs: 0x02, ch: 4 }, [hp1_p.as_slice(), &[2]].concat());
-    let rc_p = [mc_p.as_slice(), &[14]].concat();
     path_to_hw.insert([rc_p.as_slice(), &[0]].concat(), HwBinding::RoomBypass);
     path_to_hw.insert([rc_p.as_slice(), &[1]].concat(), HwBinding::RoomBypass);
     path_to_hw.insert([rc_p.as_slice(), &[2]].concat(), HwBinding::RoomBypass);
@@ -2515,6 +2585,25 @@ pub fn write_param_to_hardware(
                 };
                 let _ = dev.vendor_out(BREQ_PARAM, ENT_ROOM, 0x0600 | (ch as u16), &raw.to_le_bytes());
             }
+        }
+        HwBinding::RoomEqBand {
+            ch,
+            cs,
+            t_path,
+            f_path,
+            g_path,
+            q_path,
+        } => {
+            let t = tree_i32(tree, &t_path, 11).clamp(0, 65535) as u16;
+            let f = tree_f64(tree, &f_path, 1000.0).clamp(20.0, 20000.0).round() as u16;
+            let g = db_to_q88(tree_f64(tree, &g_path, 0.0).clamp(-12.0, 12.0));
+            let q = (tree_f64(tree, &q_path, 0.71).clamp(0.3, 12.0) * 256.0).round() as u16;
+            let mut pkt = [0u8; 8];
+            pkt[0..2].copy_from_slice(&t.to_le_bytes());
+            pkt[2..4].copy_from_slice(&f.to_le_bytes());
+            pkt[4..6].copy_from_slice(&g);
+            pkt[6..8].copy_from_slice(&q.to_le_bytes());
+            let _ = dev.vendor_out(BREQ_PARAM, ENT_ROOM, ((cs as u16) << 8) | (ch as u16), &pkt);
         }
     }
 }

@@ -3498,6 +3498,59 @@ html.is-snapped body {
 }
 
 /* Clean 2.5D Elevation-Coded Acoustic Soundstage */
+.rt-eq-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+}
+
+.rt-eq-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.rt-eq-spk-tabs,
+.rt-eq-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rt-eq-oled {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 150px;
+  background: #0a0a0d;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.rt-eq-band-bar {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.rt-eq-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rt-eq-controls .rt-insp-ctrl {
+  flex: 1 1 140px;
+}
+
 .rt-stage-3d {
   position: relative;
   flex: 1 1 auto;

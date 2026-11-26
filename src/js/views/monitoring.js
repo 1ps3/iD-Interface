@@ -100,8 +100,35 @@ export function createMonitoringView(container, store) {
   let hp1Meter = null;
   let paramBindings = new Map();
   let selectedSpkIdx = 0;
+  let selectedEqBandIdx = 0;
+  let roomViewMode = "stage"; // "stage" | "eq"
+  let linkLrEq = true;
   let speakerNodeEls = [];
   let stageResizeObs = null;
+
+  const RT_EQ_BAND_META = [
+    { label: "LS", activeType: 5, defF: 80, defQ: 0.71, color: "#93c5fd" },
+    { label: "1", activeType: 8, defF: 250, defQ: 2.0, color: "#2dd4bf" },
+    { label: "2", activeType: 8, defF: 600, defQ: 2.0, color: "#a78bfa" },
+    { label: "3", activeType: 8, defF: 1500, defQ: 2.0, color: "#f5b83d" },
+    { label: "4", activeType: 8, defF: 4000, defQ: 2.0, color: "#f472b6" },
+    { label: "HS", activeType: 7, defF: 8000, defQ: 0.71, color: "#fb923c" },
+  ];
+
+  function evalRtBandDb(freq, b) {
+    if (b.t === 11 || Math.abs(b.g) < 0.01) return 0;
+    const f0 = Math.max(20, b.f || 1000);
+    const q = Math.max(0.3, b.q || 1.0);
+    const ratio = freq / f0;
+    const logDist = Math.log2(ratio);
+    if (b.t === 8) {
+      const bw = 1 / q;
+      return b.g * Math.exp(-0.5 * Math.pow(logDist / (bw * 0.55), 2));
+    }
+    if (b.t === 5) return b.g / (1 + Math.pow(ratio, 2 * Math.min(2, q)));
+    if (b.t === 7) return b.g / (1 + Math.pow(1 / ratio, 2 * Math.min(2, q)));
+    return 0;
+  }
 
   container.innerHTML = `
     <div class="view-header">
@@ -193,6 +220,25 @@ export function createMonitoringView(container, store) {
 
     const speakers = rawChannels.map((ch, idx) => {
       const meta = classifySpeaker(ch.code, idx, rawChannels.length);
+      const chNode = store.getNode(ch.path);
+      const eqChildIdx = chNode?.children?.findIndex((c) => c.tag === "EQ") ?? -1;
+      const eqBands = [];
+      if (eqChildIdx >= 0) {
+        const eqPath = [...ch.path, eqChildIdx];
+        const eqNode = store.getNode(eqPath);
+        eqNode?.children?.forEach((bNode, bi) => {
+          if (bNode.tag === "Band") {
+            const bp = [...eqPath, bi];
+            eqBands.push({
+              idx: bi,
+              tP: store.findParamPath(bp, "T"),
+              fP: store.findParamPath(bp, "F"),
+              gP: store.findParamPath(bp, "G"),
+              qP: store.findParamPath(bp, "Q"),
+            });
+          }
+        });
+      }
       return {
         ...meta,
         idx,
@@ -202,6 +248,7 @@ export function createMonitoringView(container, store) {
         dlyOnP: store.findParamPath(ch.path, "DlyOn"),
         muteP: store.findParamPath(ch.path, "Mute"),
         soloP: store.findParamPath(ch.path, "Solo"),
+        eqBands,
       };
     });
 
@@ -229,14 +276,35 @@ export function createMonitoringView(container, store) {
           </div>
         </div>
         <div class="rt-toggles">
+          <div class="seg-group" id="rtViewModeSeg">
+            <button type="button" class="seg-btn ${roomViewMode === "stage" ? "active" : ""}" data-rt-mode="stage">STAGE</button>
+            <button type="button" class="seg-btn ${roomViewMode === "eq" ? "active" : ""}" data-rt-mode="eq">ROOM EQ</button>
+          </div>
           <button class="mini-pill-btn green-active" id="btnRtGlobal">BYPASSED</button>
           <button class="mini-pill-btn" id="btnRtMain">MAIN</button>
           <button class="mini-pill-btn" id="btnRtAlt">ALT</button>
         </div>
       </div>
 
+      <!-- Manual RoomTune 6-Band Speaker EQ Panel -->
+      <div class="rt-eq-panel" id="rtEqPanel" style="display:${roomViewMode === "eq" ? "flex" : "none"};">
+        <div class="rt-eq-head">
+          <div class="rt-eq-spk-tabs" id="rtEqSpkTabs"></div>
+          <div class="rt-eq-head-actions">
+            <button type="button" class="mini-pill-btn ${linkLrEq ? "active" : ""}" id="btnRtEqLink" title="Link Left &amp; Right Speaker EQ edits">LINK L+R</button>
+            <button type="button" class="mini-pill-btn" id="btnRtEqFlat" title="Reset all RoomTune EQ bands to flat (0 dB)">FLAT ALL</button>
+          </div>
+        </div>
+        <div class="rt-eq-oled" id="rtEqOled">
+          <svg class="eq-oled-svg" id="rtEqSvg" viewBox="0 0 600 180" preserveAspectRatio="none"></svg>
+          <div class="eq-oled-readout" id="rtEqReadout"></div>
+        </div>
+        <div class="rt-eq-band-bar" id="rtEqBandBar"></div>
+        <div class="rt-eq-controls" id="rtEqControls"></div>
+      </div>
+
       <!-- Clean 2.5D Elevation-Coded Acoustic Soundstage -->
-      <div class="rt-stage-3d" id="rtStage3d">
+      <div class="rt-stage-3d" id="rtStage3d" style="display:${roomViewMode === "stage" ? "" : "none"};">
         <div class="rt-front-bar" aria-hidden="true"><span>FRONT</span></div>
 
         <svg class="rt-stage-svg" id="rtStageSvg" viewBox="0 0 640 440" aria-hidden="true">
@@ -547,11 +615,246 @@ export function createMonitoringView(container, store) {
       spkInspector._syncCurrent = syncSel;
     }
 
+    // --- Manual RoomTune 6-Band Speaker EQ Editor ---
+    const rtEqPanel = stageEl.querySelector("#rtEqPanel");
+    const rtStage3d = stageEl.querySelector("#rtStage3d");
+    const rtEqSpkTabs = stageEl.querySelector("#rtEqSpkTabs");
+    const rtEqSvg = stageEl.querySelector("#rtEqSvg");
+    const rtEqReadout = stageEl.querySelector("#rtEqReadout");
+    const rtEqBandBar = stageEl.querySelector("#rtEqBandBar");
+    const rtEqControls = stageEl.querySelector("#rtEqControls");
+    const btnRtEqLink = stageEl.querySelector("#btnRtEqLink");
+    const btnRtEqFlat = stageEl.querySelector("#btnRtEqFlat");
+
+    stageEl.querySelectorAll("#rtViewModeSeg .seg-btn").forEach((b) => {
+      b.addEventListener("click", () => {
+        roomViewMode = b.dataset.rtMode === "eq" ? "eq" : "stage";
+        stageEl.querySelectorAll("#rtViewModeSeg .seg-btn").forEach((x) => {
+          x.classList.toggle("active", x.dataset.rtMode === roomViewMode);
+        });
+        if (rtStage3d) rtStage3d.style.display = roomViewMode === "stage" ? "" : "none";
+        if (rtEqPanel) rtEqPanel.style.display = roomViewMode === "eq" ? "flex" : "none";
+        if (roomViewMode === "eq") renderRoomEq();
+      });
+    });
+
+    const getTargetSpeakersForEq = () =>
+      linkLrEq ? speakers.filter((sp) => sp.eqBands.length > 0) : [speakers[selectedSpkIdx]].filter(Boolean);
+
+    const setEqBandField = (bandIdx, field, val) => {
+      for (const sp of getTargetSpeakersForEq()) {
+        const b = sp.eqBands[bandIdx];
+        if (b && b[field]) store.setParam(b[field], val);
+      }
+    };
+
+    const freqToX = (f) => ((Math.log10(Math.max(20, Math.min(20000, f))) - Math.log10(20)) / (Math.log10(20000) - Math.log10(20))) * 600;
+    const xToFreq = (x) => Math.round(20 * Math.pow(1000, Math.max(0, Math.min(1, x / 600))));
+    const dbToY = (db) => 90 - (Math.max(-12, Math.min(12, db)) / 12) * 76;
+    const yToDb = (y) => Math.round(Math.max(-12, Math.min(12, ((90 - y) / 76) * 12)) * 10) / 10;
+
+    function renderRoomEq() {
+      const s = speakers[selectedSpkIdx];
+      if (!s || !s.eqBands.length) {
+        if (rtEqControls) {
+          rtEqControls.innerHTML = `<span class="set-row-desc">RoomTune manual EQ requires Direct USB mode.</span>`;
+        }
+        return;
+      }
+
+      if (rtEqSpkTabs) {
+        rtEqSpkTabs.innerHTML = speakers
+          .map(
+            (sp) =>
+              `<button type="button" class="mini-pill-btn ${sp.idx === selectedSpkIdx ? "active" : ""}" data-eq-spk="${sp.idx}">${sp.code} · ${sp.full}</button>`
+          )
+          .join("");
+        rtEqSpkTabs.querySelectorAll("[data-eq-spk]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            selectedSpkIdx = Number(btn.dataset.eqSpk);
+            speakers.forEach(syncSpeakerNodeVisual);
+            renderSelectedSpeakerInspector();
+            renderRoomEq();
+          });
+        });
+      }
+
+      const bandsState = s.eqBands.map((b, i) => {
+        const meta = RT_EQ_BAND_META[i] || RT_EQ_BAND_META[1];
+        return {
+          idx: i,
+          meta,
+          t: Number(store.getVal(b.tP, 11)),
+          f: Number(store.getVal(b.fP, meta.defF)),
+          g: Number(store.getVal(b.gP, 0)),
+          q: Number(store.getVal(b.qP, meta.defQ)),
+        };
+      });
+
+      // Draw SVG grid, summed curve & draggable nodes
+      const freqs = [50, 100, 200, 500, 1000, 2000, 5000, 10000];
+      let svgHtml = "";
+      for (const fr of freqs) {
+        const x = freqToX(fr).toFixed(1);
+        const lbl = fr >= 1000 ? `${fr / 1000}k` : `${fr}`;
+        svgHtml += `<line x1="${x}" y1="0" x2="${x}" y2="180" class="eq-grid-v" />`;
+        svgHtml += `<text x="${Number(x) + 3}" y="174" class="eq-grid-lbl">${lbl}</text>`;
+      }
+      for (const db of [-6, 0, 6]) {
+        const y = dbToY(db).toFixed(1);
+        svgHtml += `<line x1="0" y1="${y}" x2="600" y2="${y}" class="${db === 0 ? "eq-grid-zero" : "eq-grid-h"}" />`;
+      }
+
+      const pts = [];
+      for (let px = 0; px <= 600; px += 4) {
+        const fr = xToFreq(px);
+        let sum = 0;
+        for (const b of bandsState) sum += evalRtBandDb(fr, b);
+        pts.push(`${px},${dbToY(sum).toFixed(1)}`);
+      }
+      svgHtml += `<polyline points="${pts.join(" ")}" fill="none" stroke="#a78bfa" stroke-width="2" />`;
+
+      for (const b of bandsState) {
+        const cx = freqToX(b.f).toFixed(1);
+        const cy = dbToY(b.t === 11 ? 0 : b.g).toFixed(1);
+        const isSel = b.idx === selectedEqBandIdx;
+        const isByps = b.t === 11;
+        svgHtml += `
+          <g class="eq-node ${isSel ? "selected" : ""} ${isByps ? "bypassed" : ""}" data-rt-node="${b.idx}">
+            <circle cx="${cx}" cy="${cy}" r="12" class="eq-node-hit" />
+            <circle cx="${cx}" cy="${cy}" r="${isSel ? 7 : 5.5}" fill="${b.meta.color}" class="eq-node-dot" />
+            <text x="${cx}" y="${Number(cy) + 2.5}" class="eq-node-num">${b.meta.label}</text>
+          </g>`;
+      }
+      rtEqSvg.innerHTML = svgHtml;
+
+      const sel = bandsState[selectedEqBandIdx] || bandsState[0];
+      if (rtEqReadout && sel) {
+        const fTxt = sel.f >= 1000 ? `${(sel.f / 1000).toFixed(2)} kHz` : `${Math.round(sel.f)} Hz`;
+        rtEqReadout.textContent = `${sel.meta.label} · ${fTxt} · ${sel.g >= 0 ? "+" : ""}${sel.g.toFixed(1)} dB · Q ${sel.q.toFixed(2)}`;
+      }
+
+      // Drag nodes directly on SVG curve
+      rtEqSvg.querySelectorAll("[data-rt-node]").forEach((g) => {
+        g.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          const bi = Number(g.dataset.rtNode);
+          selectedEqBandIdx = bi;
+          const meta = RT_EQ_BAND_META[bi] || RT_EQ_BAND_META[1];
+          if (bandsState[bi]?.t === 11) {
+            setEqBandField(bi, "tP", meta.activeType);
+          }
+          const rect = rtEqSvg.getBoundingClientRect();
+          const onMove = (ev) => {
+            const nx = ((ev.clientX - rect.left) / rect.width) * 600;
+            const ny = ((ev.clientY - rect.top) / rect.height) * 180;
+            setEqBandField(bi, "fP", xToFreq(nx));
+            setEqBandField(bi, "gP", yToDb(ny));
+            renderRoomEq();
+          };
+          const onUp = () => {
+            window.removeEventListener("pointermove", onMove);
+            window.removeEventListener("pointerup", onUp);
+          };
+          window.addEventListener("pointermove", onMove);
+          window.addEventListener("pointerup", onUp);
+          renderRoomEq();
+        });
+      });
+
+      // Band selector pills
+      if (rtEqBandBar) {
+        rtEqBandBar.innerHTML = bandsState
+          .map(
+            (b) =>
+              `<button type="button" class="eq-band-pill ${b.idx === selectedEqBandIdx ? "active" : ""}" style="--band-col:${b.meta.color};" data-rt-band="${b.idx}">
+                ${b.meta.label} ${b.t === 11 ? "OFF" : `${b.g >= 0 ? "+" : ""}${b.g.toFixed(1)}dB`}
+              </button>`
+          )
+          .join("");
+        rtEqBandBar.querySelectorAll("[data-rt-band]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            selectedEqBandIdx = Number(btn.dataset.rtBand);
+            renderRoomEq();
+          });
+        });
+      }
+
+      // Selected band controls (ON/OFF, FREQ, GAIN, Q)
+      if (rtEqControls && sel) {
+        const isOn = sel.t !== 11;
+        const fLogVal = Math.round(((Math.log10(sel.f) - Math.log10(20)) / (Math.log10(20000) - Math.log10(20))) * 1000);
+        rtEqControls.innerHTML = `
+          <button type="button" class="mini-pill-btn green-active ${isOn ? "active" : ""}" id="rtBandToggle">${isOn ? "BAND ON" : "BYPASSED"}</button>
+          <div class="rt-insp-ctrl">
+            <span class="micro-label">FREQ</span>
+            <input type="range" class="mini-slider" id="rtBandFreq" min="0" max="1000" step="1" value="${fLogVal}" />
+            <span class="comp-val" id="rtBandFreqV">${sel.f >= 1000 ? `${(sel.f / 1000).toFixed(2)}k` : `${Math.round(sel.f)}Hz`}</span>
+          </div>
+          <div class="rt-insp-ctrl">
+            <span class="micro-label">GAIN</span>
+            <input type="range" class="mini-slider" id="rtBandGain" min="-12" max="12" step="0.1" value="${sel.g}" />
+            <span class="comp-val" id="rtBandGainV">${sel.g >= 0 ? "+" : ""}${sel.g.toFixed(1)} dB</span>
+          </div>
+          <div class="rt-insp-ctrl">
+            <span class="micro-label">Q</span>
+            <input type="range" class="mini-slider" id="rtBandQ" min="0.3" max="12" step="0.05" value="${sel.q}" />
+            <span class="comp-val" id="rtBandQV">${sel.q.toFixed(2)}</span>
+          </div>
+        `;
+
+        rtEqControls.querySelector("#rtBandToggle")?.addEventListener("click", () => {
+          setEqBandField(sel.idx, "tP", isOn ? 11 : sel.meta.activeType);
+          renderRoomEq();
+        });
+        const slF = rtEqControls.querySelector("#rtBandFreq");
+        const slG = rtEqControls.querySelector("#rtBandGain");
+        const slQ = rtEqControls.querySelector("#rtBandQ");
+        slF?.addEventListener("input", () => {
+          const hz = Math.round(20 * Math.pow(1000, Number(slF.value) / 1000));
+          if (sel.t === 11) setEqBandField(sel.idx, "tP", sel.meta.activeType);
+          setEqBandField(sel.idx, "fP", hz);
+          renderRoomEq();
+        });
+        slG?.addEventListener("input", () => {
+          const db = Number(slG.value);
+          if (sel.t === 11) setEqBandField(sel.idx, "tP", sel.meta.activeType);
+          setEqBandField(sel.idx, "gP", db);
+          renderRoomEq();
+        });
+        slQ?.addEventListener("input", () => {
+          const q = Number(slQ.value);
+          if (sel.t === 11) setEqBandField(sel.idx, "tP", sel.meta.activeType);
+          setEqBandField(sel.idx, "qP", q);
+          renderRoomEq();
+        });
+      }
+    }
+
+    btnRtEqLink?.addEventListener("click", () => {
+      linkLrEq = !linkLrEq;
+      btnRtEqLink.classList.toggle("active", linkLrEq);
+    });
+
+    btnRtEqFlat?.addEventListener("click", () => {
+      for (const sp of getTargetSpeakersForEq()) {
+        sp.eqBands.forEach((b, i) => {
+          const meta = RT_EQ_BAND_META[i] || RT_EQ_BAND_META[1];
+          if (b.tP) store.setParam(b.tP, 11);
+          if (b.fP) store.setParam(b.fP, meta.defF);
+          if (b.gP) store.setParam(b.gP, 0.0);
+          if (b.qP) store.setParam(b.qP, meta.defQ);
+        });
+      }
+      renderRoomEq();
+    });
+
     nodeButtons.forEach((btn, idx) => {
       btn.addEventListener("click", () => {
         selectedSpkIdx = idx;
         speakers.forEach(syncSpeakerNodeVisual);
         renderSelectedSpeakerInspector();
+        if (roomViewMode === "eq") renderRoomEq();
       });
     });
 
@@ -563,10 +866,18 @@ export function createMonitoringView(container, store) {
         }
       };
       [s.muteP, s.soloP, s.trimP, s.dlyOnP, s.dlyP].forEach((p) => bind(p, onSpkChange));
+      s.eqBands.forEach((b) => {
+        [b.tP, b.fP, b.gP, b.qP].forEach((p) =>
+          bind(p, () => {
+            if (roomViewMode === "eq") renderRoomEq();
+          })
+        );
+      });
       syncSpeakerNodeVisual(s);
     });
 
     renderSelectedSpeakerInspector();
+    if (roomViewMode === "eq") renderRoomEq();
   }
 
   store.onSnapshot(rebuildRoomTune);
