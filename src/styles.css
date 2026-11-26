@@ -6628,13 +6628,17 @@ html.is-snapped body {
 }
 
 :root[data-theme="mono"] .mixer-pair,
+:root[data-theme="mono"] .channel-inspector,
 :root[data-theme="mono"] .master-dock,
-:root[data-theme="mono"] .dock-wave-section {
+:root[data-theme="mono"] .dock-wave-section,
+:root[data-theme="mono"] .compact-hw-unit {
   --pair-accent: #e0e0e6 !important;
+  --insp-accent: #ffffff !important;
   --mix-glow: #ffffff !important;
   --mix-accent: #e0e0e6 !important;
   --wave-glow: #ffffff !important;
   --wave-accent: #e0e0e6 !important;
+  --unit-glow: rgba(255, 255, 255, 0.075) !important;
 }
 
 /* Monochrome card top glows (replace teal/purple/pink with subtle white) */
