@@ -281,6 +281,10 @@ pub enum HwBinding {
     SmartGainTrigger,
     SmartGainArm { ch: u8 },
     RoomBypass,
+    RoomProfTrim,
+    RoomSpkTrim { ch: u8 },
+    RoomSpkDelay { ch: u8 },
+    RoomSpkDelayOn { ch: u8, dly_path: Vec<usize> },
 }
 
 /// Reverse lookup key for hardware change events `[cs, ch, 0, entity]`
@@ -1195,6 +1199,22 @@ fn hw_get_u16(dev: &TusbDevice<'_>, ent: u8, cs: u8, ch: u8, default: u16) -> u1
         .unwrap_or(default)
 }
 
+fn hw_get_q24_8(dev: &TusbDevice<'_>, ent: u8, cs: u8, ch: u8, default: f64) -> f64 {
+    dev.vendor_in(BREQ_PARAM, ent, ((cs as u16) << 8) | (ch as u16), 4)
+        .ok()
+        .filter(|b| b.len() >= 4)
+        .map(|b| (i32::from_le_bytes([b[0], b[1], b[2], b[3]]) as f64) / 256.0)
+        .unwrap_or(default)
+}
+
+fn hw_get_u32(dev: &TusbDevice<'_>, ent: u8, cs: u8, ch: u8, default: u32) -> u32 {
+    dev.vendor_in(BREQ_PARAM, ent, ((cs as u16) << 8) | (ch as u16), 4)
+        .ok()
+        .filter(|b| b.len() >= 4)
+        .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+        .unwrap_or(default)
+}
+
 fn hw_get_eq_band(dev: &TusbDevice<'_>, cs: u8, ch: u8, def_t: i32, def_f: f64, def_q: f64) -> (i32, f64, f64, f64) {
     if let Ok(b) = dev.vendor_in(BREQ_PARAM, ENT_DSP, ((cs as u16) << 8) | (ch as u16), 8) {
         if b.len() >= 8 {
@@ -1215,7 +1235,8 @@ fn hw_out_src_to_ui(code: u8, is_hp: bool) -> i32 {
             0x2B | 0x2C | 0x27 | 0x28 => 0, // MAIN
             0x1E | 0x1F => 1,               // MIX A
             0x20 | 0x21 => 2,               // MIX B
-            _ => 3,                         // VIRTUAL THRU
+            0x0A..=0x0F => 3,               // VIRTUAL THRU
+            _ => 0,                         // Safe fallback to MAIN on transient 0x00/0xFF boot reads
         }
     } else {
         match code {
@@ -1223,7 +1244,8 @@ fn hw_out_src_to_ui(code: u8, is_hp: bool) -> i32 {
             0x29 | 0x2A => 1, // ALT
             0x1E | 0x1F => 2, // MIX A
             0x20 | 0x21 => 3, // MIX B
-            _ => 4,           // VIRTUAL THRU
+            0x0A..=0x0F => 4, // VIRTUAL THRU
+            _ => 0,           // Safe fallback to MAIN on transient 0x00/0xFF boot reads
         }
     }
 }
@@ -1362,43 +1384,16 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
         let _ = dev.vendor_out(BREQ_PARAM, ENT_DIGITAL, 0x0100, &[settings.opt_mode as u8]);
     }
 
-    // Use exact fixed hardware mixer channel counts for the 4 Audient MK3 models so
-    // transient USB hot-plug probe errors can never shift Comp Out 1+2 / 3+4 / 5+6 slots.
-    let (analog_count, digital_count): (u8, u8) = match model_name.as_str() {
-        "iD1" => (1, 0),
-        "iD2" | "iD2+" => (2, 8),
-        "iD4+" => (4, 8),
-        _ => {
-            let mut a: u8 = 0;
-            for ch in 0..8u8 {
-                let hpf_valid = dev
-                    .vendor_in(BREQ_PARAM, ENT_DSP, 0x0600 | (ch as u16), 8)
-                    .ok()
-                    .filter(|b| b.len() >= 4)
-                    .map(|b| u16::from_le_bytes([b[2], b[3]]) != 0xFFFF)
-                    .unwrap_or(false);
-                if hpf_valid {
-                    a += 1;
-                } else {
-                    break;
-                }
-            }
-            if a == 0 {
-                a = 2;
-            }
-            let mut d: u8 = 0;
-            for ch in a..(a + 16) {
-                if dev
-                    .vendor_in(BREQ_PARAM, ENT_INPUTS, 0x0200 | (ch as u16), 2)
-                    .is_ok()
-                {
-                    d += 1;
-                } else {
-                    break;
-                }
-            }
-            (a, d)
-        }
+    // Use exact fixed hardware mixer channel counts for the 4 Audient MK3 models
+    // (never fall back to dynamic USB probing, which can shift Comp Out 11+12 <-> 13+14 on hot-plug).
+    let model_upper = model_name.to_ascii_uppercase();
+    let (analog_count, digital_count): (u8, u8) = if model_upper.contains("ID4+") {
+        (4, 16)
+    } else if model_upper.contains("ID1") {
+        (1, 0)
+    } else {
+        // iD2 / iD2+ (and safe MK3 default): 2 analog + 8 digital -> Comp Out 1+2 is always 11+12
+        (2, 8)
     };
     let total_inputs = analog_count + digital_count;
 
@@ -1756,7 +1751,18 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
     let hp1_mute = hw_get_u8(dev, ENT_OUTPUTS, 0x02, 4, 0) as i32;
     let hp1_src_raw = hw_get_u8(dev, ENT_OUTPUTS, 0x00, 4, 0x2B);
     let hp1_src = hw_out_src_to_ui(hp1_src_raw, true);
-    let room_byps = if hw_get_u8(dev, ENT_ROOM, 0x00, 0, 0) == 0 { 1 } else { 0 };
+    // Hardware-verified ENT_ROOM (0x08) registers:
+    //   cs=0x01 ch=0 (u16): bit 1 = RoomTune bypass
+    //   cs=0x04 ch=0/1 (i32 Q24.8): Speaker L/R Trim (dB)
+    //   cs=0x06 ch=0/1 (u32): Speaker L/R Delay (hundredths of ms, 0..1000 = 0..10.00ms)
+    //   cs=0x23 ch=0 (i32 Q24.8): Profile Trim (dB)
+    let room_flags = hw_get_u16(dev, ENT_ROOM, 0x01, 0, 0);
+    let room_byps = if (room_flags & 0x02) != 0 { 1 } else { 0 };
+    let prof_trim = hw_get_q24_8(dev, ENT_ROOM, 0x23, 0, 0.0).clamp(-12.0, 12.0);
+    let spk_l_trim = hw_get_q24_8(dev, ENT_ROOM, 0x04, 0, 0.0).clamp(-12.0, 12.0);
+    let spk_r_trim = hw_get_q24_8(dev, ENT_ROOM, 0x04, 1, 0.0).clamp(-12.0, 12.0);
+    let spk_l_dly = (hw_get_u32(dev, ENT_ROOM, 0x06, 0, 0) as f64 / 100.0).clamp(0.0, 10.0);
+    let spk_r_dly = (hw_get_u32(dev, ENT_ROOM, 0x06, 1, 0) as f64 / 100.0).clamp(0.0, 10.0);
 
     let mut mc_children = vec![
         param_f64("Vol", main_vol, None, true),                     // 0
@@ -1794,14 +1800,14 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
             param_int("MainByps", room_byps, None, true),
             param_int("AltByps", room_byps, None, true),
             param_int("CurProfile", speaker_sel, Some(7), false),
-            param_f64("ProfTrim", 0.0, None, true),
+            param_f64("ProfTrim", prof_trim, None, true),
             node(
                 "Channel",
                 vec![("name", JuceVar::String("L".into()))],
                 vec![
-                    param_f64("SpkTrim", 0.0, None, true),
-                    param_f64("Dly", 0.0, None, true),
-                    param_int("DlyOn", 0, None, true),
+                    param_f64("SpkTrim", spk_l_trim, None, true),
+                    param_f64("Dly", spk_l_dly, None, true),
+                    param_int("DlyOn", if spk_l_dly > 0.0 { 1 } else { 0 }, None, true),
                     param_int("Mute", 0, None, true),
                     param_int("Solo", 0, None, true),
                 ],
@@ -1810,9 +1816,9 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
                 "Channel",
                 vec![("name", JuceVar::String("R".into()))],
                 vec![
-                    param_f64("SpkTrim", 0.0, None, true),
-                    param_f64("Dly", 0.0, None, true),
-                    param_int("DlyOn", 0, None, true),
+                    param_f64("SpkTrim", spk_r_trim, None, true),
+                    param_f64("Dly", spk_r_dly, None, true),
+                    param_int("DlyOn", if spk_r_dly > 0.0 { 1 } else { 0 }, None, true),
                     param_int("Mute", 0, None, true),
                     param_int("Solo", 0, None, true),
                 ],
@@ -1845,7 +1851,19 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
     hw_to_path.insert(HwRegKey { entity: ENT_OUTPUTS, cs: 0x00, ch: 4 }, [hp1_p.as_slice(), &[0]].concat());
     hw_to_path.insert(HwRegKey { entity: ENT_OUTPUTS, cs: 0x01, ch: 4 }, [hp1_p.as_slice(), &[1]].concat());
     hw_to_path.insert(HwRegKey { entity: ENT_OUTPUTS, cs: 0x02, ch: 4 }, [hp1_p.as_slice(), &[2]].concat());
-    path_to_hw.insert([mc_p.as_slice(), &[14, 0]].concat(), HwBinding::RoomBypass);
+    let rc_p = [mc_p.as_slice(), &[14]].concat();
+    path_to_hw.insert([rc_p.as_slice(), &[0]].concat(), HwBinding::RoomBypass);
+    path_to_hw.insert([rc_p.as_slice(), &[1]].concat(), HwBinding::RoomBypass);
+    path_to_hw.insert([rc_p.as_slice(), &[2]].concat(), HwBinding::RoomBypass);
+    path_to_hw.insert([rc_p.as_slice(), &[4]].concat(), HwBinding::RoomProfTrim);
+    let rc_l_dly_p = [rc_p.as_slice(), &[5, 1]].concat();
+    let rc_r_dly_p = [rc_p.as_slice(), &[6, 1]].concat();
+    path_to_hw.insert([rc_p.as_slice(), &[5, 0]].concat(), HwBinding::RoomSpkTrim { ch: 0 });
+    path_to_hw.insert(rc_l_dly_p.clone(), HwBinding::RoomSpkDelay { ch: 0 });
+    path_to_hw.insert([rc_p.as_slice(), &[5, 2]].concat(), HwBinding::RoomSpkDelayOn { ch: 0, dly_path: rc_l_dly_p });
+    path_to_hw.insert([rc_p.as_slice(), &[6, 0]].concat(), HwBinding::RoomSpkTrim { ch: 1 });
+    path_to_hw.insert(rc_r_dly_p.clone(), HwBinding::RoomSpkDelay { ch: 1 });
+    path_to_hw.insert([rc_p.as_slice(), &[6, 2]].concat(), HwBinding::RoomSpkDelayOn { ch: 1, dly_path: rc_r_dly_p });
 
     // --- 4: Routers ---
     let routers_p = [state_p.as_slice(), &[4]].concat();
@@ -2464,8 +2482,38 @@ pub fn write_param_to_hardware(
         }
         HwBinding::RoomBypass => {
             if let Some(v) = value.as_i64() {
-                let enabled = if v == 0 { 1 } else { 0 };
-                let _ = dev.vendor_out(BREQ_PARAM, ENT_ROOM, 0x0000, &[enabled]);
+                let cur = hw_get_u16(dev, ENT_ROOM, 0x01, 0, 0);
+                let next = if v != 0 { cur | 0x02 } else { cur & !0x02 };
+                let _ = dev.vendor_out(BREQ_PARAM, ENT_ROOM, 0x0100, &next.to_le_bytes());
+            }
+        }
+        HwBinding::RoomProfTrim => {
+            if let Some(db) = value.as_f64() {
+                let raw = (db.clamp(-12.0, 12.0) * 256.0).round() as i32;
+                let _ = dev.vendor_out(BREQ_PARAM, ENT_ROOM, 0x2300, &raw.to_le_bytes());
+            }
+        }
+        HwBinding::RoomSpkTrim { ch } => {
+            if let Some(db) = value.as_f64() {
+                let raw = (db.clamp(-12.0, 12.0) * 256.0).round() as i32;
+                let _ = dev.vendor_out(BREQ_PARAM, ENT_ROOM, 0x0400 | (ch as u16), &raw.to_le_bytes());
+            }
+        }
+        HwBinding::RoomSpkDelay { ch } => {
+            if let Some(ms) = value.as_f64() {
+                let raw = (ms.clamp(0.0, 10.0) * 100.0).round() as u32;
+                let _ = dev.vendor_out(BREQ_PARAM, ENT_ROOM, 0x0600 | (ch as u16), &raw.to_le_bytes());
+            }
+        }
+        HwBinding::RoomSpkDelayOn { ch, dly_path } => {
+            if let Some(v) = value.as_i64() {
+                let raw: u32 = if v != 0 {
+                    let ms = tree_f64(tree, &dly_path, 0.0);
+                    (ms.clamp(0.0, 10.0) * 100.0).round() as u32
+                } else {
+                    0
+                };
+                let _ = dev.vendor_out(BREQ_PARAM, ENT_ROOM, 0x0600 | (ch as u16), &raw.to_le_bytes());
             }
         }
     }

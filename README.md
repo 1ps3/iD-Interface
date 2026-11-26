@@ -57,7 +57,7 @@ Collapse the full console into a resizable, always-on-top hardware faceplate for
 ### Full Studio Console & Hardware DSP
 * **4-Bus Mixer (`Main Mix`, `Mix A`, `Mix B`, `Reverb`)** with Dual Peak + RMS metering, custom channel scribble strips, and instant `STEREO`/`MONO` pairing.
 * **Zero-Scroll Channel Strip & DSP Deck:** Preamp Gain, 48V, Mute, V-HPF, V-Phase, Tone (`Glow` / `HMX` / `Lift` / `Orbit`), 4-band Parametric EQ with live SVG response curve, Compressor with hardware GR meter and discrete `2:1 / 4:1 / 8:1 / 16:1` ratios, DSP Order, Record FX, and Reverb Send — all unlocked up to **96 kHz** and cleanly faded until engaged.
-* **Preamps + SmartGain**, **3D RoomTune Monitoring Soundstage** *(experimental — not yet hardware-tested)*, and **Output & Loopback Routing Matrix** (with Virtual Thru loud-output guard).
+* **Preamps + SmartGain**, **3D RoomTune Monitoring Soundstage** (hardware-verified Bypass, Profile Trim, and Speaker L/R Trim & Delay), and **Output & Loopback Routing Matrix** (with Virtual Thru loud-output guard).
 
 ---
 
