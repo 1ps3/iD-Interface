@@ -681,10 +681,6 @@ export function createSettingsView(container, store, callbacks = {}) {
 
     btnCheckUpdates?.addEventListener("click", async () => {
       if (lastUpdateCheck?.status === "available" && lastUpdateCheck.downloadUrl && invoke) {
-        if (isMacOS) {
-          invoke("open_external_url", { url: lastUpdateCheck.downloadUrl }).catch(() => {});
-          return;
-        }
         btnCheckUpdates.disabled = true;
         btnCheckUpdates.textContent = "UPDATING…";
         if (updateStatusDesc) updateStatusDesc.textContent = `Downloading v${lastUpdateCheck.latestVersion} & restarting…`;
@@ -706,7 +702,7 @@ export function createSettingsView(container, store, callbacks = {}) {
       lastUpdateCheck = res;
       if (updateStatusDesc) updateStatusDesc.textContent = res.message;
       if (res.status === "available") {
-        btnCheckUpdates.textContent = isMacOS ? "DOWNLOAD" : "UPDATE";
+        btnCheckUpdates.textContent = "UPDATE";
         btnCheckUpdates.classList.add("is-confirmed", "is-pulsing");
       } else if (res.status === "up_to_date") {
         animateMemBtn(btnCheckUpdates, "CHECK", "LATEST ✓", true);

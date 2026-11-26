@@ -512,15 +512,9 @@ function showTopbarUpdateBadge(res) {
   pill.id = "btnUpdatePill";
   pill.className = "telemetry-pill update-avail-pill";
   pill.textContent = `UPDATE v${res.latestVersion}`;
-  pill.title = isMacOS
-    ? `Download iD Interface v${res.latestVersion}`
-    : `Download, install & restart to iD Interface v${res.latestVersion}`;
+  pill.title = `Download, install & restart to iD Interface v${res.latestVersion}`;
   pill.addEventListener("click", async () => {
     if (pill.disabled) return;
-    if (isMacOS) {
-      invoke("open_external_url", { url: res.downloadUrl }).catch(() => {});
-      return;
-    }
     pill.disabled = true;
     pill.textContent = "UPDATING…";
     try {

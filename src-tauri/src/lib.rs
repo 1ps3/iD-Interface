@@ -2229,7 +2229,87 @@ async fn install_app_update(
         open_external_url(fallback_url).await
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        let _ = (portable_url, setup_url);
+        let allowed = fallback_url.starts_with("https://github.com/1ps3/iD-Interface/")
+            || fallback_url.starts_with("https://objects.githubusercontent.com/");
+        if !allowed || !fallback_url.to_ascii_lowercase().ends_with(".dmg") {
+            return open_external_url(fallback_url).await;
+        }
+
+        // Locate enclosing .app bundle (e.g. /Applications/iD Interface.app)
+        let cur_exe = std::env::current_exe().map_err(|e| format!("current_exe failed: {e}"))?;
+        let app_bundle = cur_exe
+            .ancestors()
+            .find(|p| p.extension().and_then(|e| e.to_str()) == Some("app"))
+            .map(|p| p.to_path_buf());
+        let Some(app_bundle) = app_bundle else {
+            return open_external_url(fallback_url).await;
+        };
+
+        // Flush config & hardware boot state before replacing/restarting
+        {
+            let mut st = state.store.lock().await;
+            if let Some(w) = app.get_webview_window("main") {
+                capture_current_window_bounds(&w, &mut st.config);
+            }
+            st.save_current_config();
+        }
+        let _ = state.cmd_tx.send(OutboundPropertyChange {
+            path: Vec::new(),
+            prop: "__hw_save_boot".to_string(),
+            value: JuceVar::Int(1),
+        });
+
+        let tmp_dmg = std::env::temp_dir().join("id-interface-update.dmg");
+        let dmg_str = tmp_dmg.to_string_lossy().to_string();
+        let url_clone = fallback_url.clone();
+        let dl = tokio::task::spawn_blocking(move || {
+            std::process::Command::new("curl")
+                .args(["-fSL", "-o", &dmg_str, &url_clone])
+                .status()
+        })
+        .await
+        .map_err(|e| format!("download join error: {e}"))?
+        .map_err(|e| format!("download failed: {e}"))?;
+
+        if !dl.success() || std::fs::metadata(&tmp_dmg).map(|m| m.len()).unwrap_or(0) < 500_000 {
+            let _ = std::fs::remove_file(&tmp_dmg);
+            return open_external_url(fallback_url).await;
+        }
+
+        let mnt_dir = std::env::temp_dir().join("id-interface-update-mnt");
+        let app_esc = app_bundle.to_string_lossy().replace('\'', "'\\''");
+        let dmg_esc = tmp_dmg.to_string_lossy().replace('\'', "'\\''");
+        let mnt_esc = mnt_dir.to_string_lossy().replace('\'', "'\\''");
+        let script = format!(
+            "sleep 1; \
+             rm -rf '{mnt}'; mkdir -p '{mnt}'; \
+             hdiutil attach '{dmg}' -nobrowse -quiet -mountpoint '{mnt}' || exit 1; \
+             NEW_APP=$(find '{mnt}' -maxdepth 1 -name '*.app' | head -n 1); \
+             if [ -n \"$NEW_APP\" ]; then \
+               rm -rf '{app}' && cp -R \"$NEW_APP\" '{app}' && xattr -cr '{app}' 2>/dev/null || true; \
+             fi; \
+             hdiutil detach '{mnt}' -quiet 2>/dev/null || true; \
+             rm -rf '{mnt}' '{dmg}'; \
+             open -n '{app}'",
+            mnt = mnt_esc,
+            dmg = dmg_esc,
+            app = app_esc,
+        );
+
+        std::process::Command::new("sh")
+            .args(["-c", &script])
+            .spawn()
+            .map_err(|e| format!("Failed to spawn macOS updater: {e}"))?;
+
+        tokio::time::sleep(Duration::from_millis(80)).await;
+        app.exit(0);
+        Ok(())
+    }
+
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         let _ = (portable_url, setup_url, app, state);
         open_external_url(fallback_url).await
