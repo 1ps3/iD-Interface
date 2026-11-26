@@ -195,9 +195,26 @@ async function syncMaximizeBtn() {
   }
 }
 
+const macTrafficLights = document.getElementById("macTrafficLights");
 const btnMacMin = document.getElementById("btnMacMin");
 const btnMacMax = document.getElementById("btnMacMax");
 if (isMacOS) document.documentElement.dataset.platform = "macos";
+
+// Explicit pointer & focus tracking so macOS WebKit never leaves traffic-light glyphs stuck hovered
+if (macTrafficLights) {
+  const clearMacTlHover = () => macTrafficLights.classList.remove("is-hovered");
+  macTrafficLights.addEventListener("pointerenter", () => macTrafficLights.classList.add("is-hovered"));
+  macTrafficLights.addEventListener("pointerleave", clearMacTlHover);
+  macTrafficLights.addEventListener("pointercancel", clearMacTlHover);
+  window.addEventListener("blur", () => {
+    clearMacTlHover();
+    macTrafficLights.classList.add("is-unfocused");
+  });
+  window.addEventListener("focus", () => {
+    macTrafficLights.classList.remove("is-unfocused");
+  });
+  document.addEventListener("pointerleave", clearMacTlHover);
+}
 
 const handleMinimize = () => {
   invoke("minimize_window").catch(() => getCurrentWindow().minimize());
