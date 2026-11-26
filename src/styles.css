@@ -6829,106 +6829,270 @@ html.tray-menu-page body {
 
 /* --- 10 · MACOS LIQUID GLASS (ADAPTIVE SYSTEM LIGHT / DARK) --- */
 :root[data-theme="liquidglass"] {
-  --bg-shell: rgba(20, 23, 30, 0.72);
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, monospace;
+  --bg-shell: rgba(22, 24, 30, 0.76);
   --shell-tex:
-    radial-gradient(85% 65% at 18% 0%, rgba(120, 196, 255, 0.14) 0%, transparent 60%),
-    radial-gradient(70% 55% at 88% 100%, rgba(168, 130, 255, 0.1) 0%, transparent 58%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.01) 100%);
-  --bg-pod: rgba(28, 32, 42, 0.6);
-  --bg-canvas: rgba(18, 21, 28, 0.52);
-  --bg-card: rgba(38, 43, 56, 0.54);
-  --bg-panel: rgba(44, 50, 65, 0.58);
-  --bg-inset: rgba(16, 19, 26, 0.56);
-  --bg-hover: rgba(255, 255, 255, 0.12);
+    radial-gradient(90% 65% at 15% 0%, rgba(120, 198, 255, 0.14) 0%, transparent 58%),
+    radial-gradient(75% 55% at 88% 100%, rgba(160, 132, 255, 0.11) 0%, transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
+  --bg-pod: rgba(30, 34, 44, 0.56);
+  --bg-canvas: rgba(20, 23, 30, 0.48);
+  --bg-card: rgba(42, 47, 60, 0.52);
+  --bg-panel: rgba(50, 56, 72, 0.56);
+  --bg-inset: rgba(18, 21, 28, 0.52);
+  --bg-hover: rgba(255, 255, 255, 0.13);
   --border: rgba(255, 255, 255, 0.15);
   --border-subtle: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.28);
   --double-ring:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
-    0 8px 26px rgba(0, 0, 0, 0.34);
+    inset 0 -0.5px 0 rgba(255, 255, 255, 0.06),
+    0 8px 26px rgba(0, 0, 0, 0.32);
   --float-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
     0 12px 32px rgba(0, 0, 0, 0.42);
-  --text-primary: #f5f7fc;
-  --text-secondary: rgba(235, 240, 252, 0.74);
-  --text-muted: rgba(215, 224, 242, 0.5);
-  --dial-top: #394052;
-  --dial-mid: #252a38;
-  --dial-bot: #191d28;
-  --dial-stroke: rgba(255, 255, 255, 0.22);
-  --dial-track-bg: rgba(255, 255, 255, 0.12);
-  --dial-track-act: #64d2ff;
-  --hw-bg-top: rgba(44, 50, 64, 0.8);
-  --hw-bg-bot: rgba(22, 26, 35, 0.82);
+  --text-primary: rgba(255, 255, 255, 0.94);
+  --text-secondary: rgba(235, 240, 252, 0.72);
+  --text-muted: rgba(215, 224, 242, 0.48);
+  --accent-ok: #30d158;
+  --accent-warn: #ffd60a;
+  --accent-danger: #ff453a;
+  --dial-top: #3c4356;
+  --dial-mid: #272d3c;
+  --dial-bot: #1a1f2b;
+  --dial-stroke: rgba(255, 255, 255, 0.24);
+  --dial-track-bg: rgba(255, 255, 255, 0.13);
+  --dial-ptr: AccentColor;
+  --dial-track-act: AccentColor;
+  --hw-bg-top: rgba(46, 52, 66, 0.8);
+  --hw-bg-bot: rgba(22, 26, 36, 0.84);
   --hw-border: rgba(255, 255, 255, 0.24);
   --hw-disc: rgba(16, 19, 27, 0.72);
-  --hw-disc-stroke: rgba(255, 255, 255, 0.16);
-  --hw-knob-top: #3e4659;
-  --hw-knob-mid: #282e3d;
-  --hw-knob-bot: #1b1f2b;
+  --hw-disc-stroke: rgba(255, 255, 255, 0.18);
+  --hw-knob-top: #40485c;
+  --hw-knob-mid: #293040;
+  --hw-knob-bot: #1b202d;
   --hw-well-bg: rgba(14, 17, 24, 0.65);
   --hw-well-border: rgba(255, 255, 255, 0.16);
-  --hw-btn-top: rgba(255, 255, 255, 0.14);
+  --hw-btn-top: rgba(255, 255, 255, 0.15);
   --hw-btn-bot: rgba(255, 255, 255, 0.05);
-  --hw-btn-border: rgba(255, 255, 255, 0.18);
-  --hw-btn-fg: #eef3ff;
+  --hw-btn-border: rgba(255, 255, 255, 0.2);
+  --hw-btn-fg: #f0f4ff;
   --hw-meter-bg: rgba(14, 17, 24, 0.62);
   --hw-meter-border: rgba(255, 255, 255, 0.15);
+  -webkit-font-smoothing: antialiased;
 }
 
 :root[data-theme="liquidglass"] .app-shell {
-  border-color: rgba(255, 255, 255, 0.24);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
 
-:root[data-theme="liquidglass"] .tray-menu-card {
+:root[data-theme="liquidglass"] .tray-menu-card,
+:root[data-theme="liquidglass"] .custom-select-menu,
+:root[data-theme="liquidglass"] .modal-card {
+  border-radius: 14px;
+  background: rgba(34, 38, 48, 0.86);
   border-color: rgba(255, 255, 255, 0.24);
+  -webkit-backdrop-filter: blur(26px) saturate(185%);
+  backdrop-filter: blur(26px) saturate(185%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 10px 26px rgba(0, 0, 0, 0.42);
+    0 14px 36px rgba(0, 0, 0, 0.44);
 }
 
 :root[data-theme="liquidglass"] .master-dock,
 :root[data-theme="liquidglass"] .mixer-pair,
 :root[data-theme="liquidglass"] .settings-theme-card,
 :root[data-theme="liquidglass"] .settings-card-row,
+:root[data-theme="liquidglass"] .setting-pill-card,
+:root[data-theme="liquidglass"] .preamp-card,
+:root[data-theme="liquidglass"] .routing-card,
+:root[data-theme="liquidglass"] .room-card {
+  border-radius: 14px;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.015) 100%);
+  -webkit-backdrop-filter: blur(22px) saturate(175%);
+  backdrop-filter: blur(22px) saturate(175%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -0.5px 0 rgba(255, 255, 255, 0.05),
+    0 6px 20px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-theme="liquidglass"] .settings-card-row,
 :root[data-theme="liquidglass"] .setting-pill-card {
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  backdrop-filter: blur(18px) saturate(160%);
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+:root[data-theme="liquidglass"] .settings-card-row:hover,
+:root[data-theme="liquidglass"] .setting-pill-card:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+/* Liquid Glass capsule topbar pills & tabs */
+:root[data-theme="liquidglass"] .brand-model,
+:root[data-theme="liquidglass"] .telemetry-pill {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease, transform 100ms ease;
+}
+
+:root[data-theme="liquidglass"] .telemetry-btn:hover {
+  background: rgba(255, 255, 255, 0.17);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
 }
 
 :root[data-theme="liquidglass"] .top-nav-tabs {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.18);
   border-radius: 999px;
+  padding: 2.5px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 4px 14px rgba(0, 0, 0, 0.22);
 }
 
 :root[data-theme="liquidglass"] .top-nav-tabs .nav-item {
   border-radius: 999px;
+  letter-spacing: 0.4px;
+  font-weight: 600;
+  transition: background 160ms cubic-bezier(0.22, 1, 0.36, 1), color 140ms ease, box-shadow 160ms ease;
+}
+
+:root[data-theme="liquidglass"] .top-nav-tabs .nav-item:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.11);
+  color: #ffffff;
+}
+
+:root[data-theme="liquidglass"] .top-nav-tabs .nav-item.active {
+  background: rgba(255, 255, 255, 0.92);
+  color: #12151c;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 2px 10px rgba(0, 0, 0, 0.28);
+}
+
+/* Liquid Glass buttons, segmented controls, selects & switches */
+:root[data-theme="liquidglass"] .icon-btn {
+  border-radius: 999px;
+  transition: background 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 100ms ease;
+}
+
+:root[data-theme="liquidglass"] .icon-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+:root[data-theme="liquidglass"] .action-btn,
+:root[data-theme="liquidglass"] .mon-btn,
+:root[data-theme="liquidglass"] .mini-pill-btn,
+:root[data-theme="liquidglass"] .dock-select,
+:root[data-theme="liquidglass"] .insp-ch-select {
+  border-radius: 10px;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.03) 100%);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: background 150ms cubic-bezier(0.22, 1, 0.36, 1), border-color 150ms ease, box-shadow 150ms ease, color 150ms ease, transform 90ms ease;
+}
+
+:root[data-theme="liquidglass"] .action-btn:hover,
+:root[data-theme="liquidglass"] .mon-btn:hover,
+:root[data-theme="liquidglass"] .mini-pill-btn:hover,
+:root[data-theme="liquidglass"] .dock-select:hover,
+:root[data-theme="liquidglass"] .dock-select.select-open,
+:root[data-theme="liquidglass"] .insp-ch-select:hover,
+:root[data-theme="liquidglass"] .insp-ch-select.select-open {
+  background-color: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 4px 12px rgba(0, 0, 0, 0.22);
+}
+
+:root[data-theme="liquidglass"] .action-btn:active,
+:root[data-theme="liquidglass"] .mon-btn:active,
+:root[data-theme="liquidglass"] .mini-pill-btn:active {
+  transform: scale(0.97);
+}
+
+:root[data-theme="liquidglass"] .seg-group,
+:root[data-theme="liquidglass"] .bus-tabs,
+:root[data-theme="liquidglass"] .dsp-ch-tabs {
+  border-radius: 999px;
+  padding: 2.5px;
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+:root[data-theme="liquidglass"] .seg-btn {
+  border-radius: 999px;
+  transition: background 150ms ease, color 140ms ease, box-shadow 150ms ease;
+}
+
+:root[data-theme="liquidglass"] .seg-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme="liquidglass"] .seg-btn.active {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 2px 8px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-theme="liquidglass"] .custom-select-opt {
+  border-radius: 7px;
+  transition: background 110ms ease, color 110ms ease;
+}
+
+:root[data-theme="liquidglass"] .custom-select-opt:hover,
+:root[data-theme="liquidglass"] .custom-select-opt.selected {
+  background: #0a84ff;
+  background: AccentColor;
+  color: #ffffff;
+  color: AccentColorText;
+}
+
+:root[data-theme="liquidglass"] .switch-toggle.on {
+  background: #30d158;
+  background: AccentColor;
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] {
-  --bg-shell: rgba(242, 246, 253, 0.78);
+  --bg-shell: rgba(242, 246, 253, 0.8);
   --shell-tex:
-    radial-gradient(85% 65% at 16% 0%, rgba(255, 255, 255, 0.75) 0%, transparent 58%),
+    radial-gradient(85% 65% at 16% 0%, rgba(255, 255, 255, 0.82) 0%, transparent 58%),
     radial-gradient(70% 55% at 86% 100%, rgba(100, 210, 255, 0.18) 0%, transparent 60%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(235, 241, 252, 0.2) 100%);
-  --bg-pod: rgba(255, 255, 255, 0.64);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(235, 241, 252, 0.22) 100%);
+  --bg-pod: rgba(255, 255, 255, 0.66);
   --bg-canvas: rgba(236, 241, 250, 0.56);
-  --bg-card: rgba(255, 255, 255, 0.68);
-  --bg-panel: rgba(244, 247, 254, 0.7);
+  --bg-card: rgba(255, 255, 255, 0.7);
+  --bg-panel: rgba(244, 247, 254, 0.74);
   --bg-inset: rgba(226, 232, 244, 0.62);
-  --bg-hover: rgba(15, 23, 42, 0.08);
+  --bg-hover: rgba(15, 23, 42, 0.07);
   --border: rgba(25, 35, 55, 0.12);
   --border-subtle: rgba(25, 35, 55, 0.07);
-  --border-strong: rgba(25, 35, 55, 0.22);
+  --border-strong: rgba(25, 35, 55, 0.2);
+  --accent-ok: #34c759;
+  --accent-danger: #ff3b30;
   --double-ring:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 6px 20px rgba(18, 28, 48, 0.09);
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 6px 20px rgba(18, 28, 48, 0.08);
   --float-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 12px 28px rgba(18, 28, 48, 0.14);
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 12px 28px rgba(18, 28, 48, 0.13);
   --text-primary: #141821;
   --text-secondary: rgba(20, 26, 40, 0.68);
   --text-muted: rgba(20, 26, 40, 0.46);
@@ -6938,15 +7102,15 @@ html.tray-menu-page body {
   --dial-stroke: rgba(25, 38, 65, 0.18);
   --dial-bevel: rgba(255, 255, 255, 0.9);
   --dial-text: #141821;
-  --dial-ptr: #0a84ff;
+  --dial-ptr: AccentColor;
   --dial-track-bg: rgba(20, 30, 50, 0.14);
-  --dial-track-act: #0a84ff;
-  --hw-bg-top: rgba(255, 255, 255, 0.84);
-  --hw-bg-bot: rgba(232, 238, 249, 0.82);
-  --hw-border: rgba(255, 255, 255, 0.85);
-  --hw-disc: rgba(235, 240, 250, 0.76);
+  --dial-track-act: AccentColor;
+  --hw-bg-top: rgba(255, 255, 255, 0.86);
+  --hw-bg-bot: rgba(232, 238, 249, 0.84);
+  --hw-border: rgba(255, 255, 255, 0.88);
+  --hw-disc: rgba(235, 240, 250, 0.78);
   --hw-disc-stroke: rgba(25, 38, 65, 0.14);
-  --hw-disc-inner: rgba(255, 255, 255, 0.65);
+  --hw-disc-inner: rgba(255, 255, 255, 0.68);
   --hw-knob-top: #ffffff;
   --hw-knob-mid: #eef2fa;
   --hw-knob-bot: #d5deee;
@@ -6956,8 +7120,8 @@ html.tray-menu-page body {
   --hw-knob-shadow: rgba(20, 32, 56, 0.16);
   --hw-well-bg: rgba(215, 223, 238, 0.72);
   --hw-well-border: rgba(25, 38, 65, 0.12);
-  --hw-btn-top: rgba(255, 255, 255, 0.92);
-  --hw-btn-bot: rgba(235, 240, 250, 0.82);
+  --hw-btn-top: rgba(255, 255, 255, 0.94);
+  --hw-btn-bot: rgba(235, 240, 250, 0.84);
   --hw-btn-border: rgba(25, 38, 65, 0.14);
   --hw-btn-fg: #2a3142;
   --hw-model-fg: #141821;
@@ -6972,19 +7136,64 @@ html.tray-menu-page body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96);
 }
 
-:root[data-theme="liquidglass"][data-glass-scheme="light"] .tray-menu-card {
-  border-color: rgba(255, 255, 255, 0.88);
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .tray-menu-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .custom-select-menu,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .modal-card {
+  background: rgba(246, 249, 255, 0.92);
+  border-color: rgba(25, 35, 55, 0.14);
+  color: #141821;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.96),
-    0 10px 26px rgba(18, 28, 48, 0.2);
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    0 12px 30px rgba(18, 28, 48, 0.18);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .master-dock,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mixer-pair,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .settings-theme-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .settings-card-row,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .settings-card-col,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .setting-pill-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .preamp-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .routing-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .room-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .dsp-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mon-meter-bay,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .phys-out-item {
+  background-color: rgba(255, 255, 255, 0.68);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.42) 100%);
+  border-color: rgba(25, 35, 55, 0.11);
+  color: #141821;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 4px 16px rgba(18, 28, 48, 0.07);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .brand-model,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .telemetry-pill {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(25, 35, 55, 0.12);
+  color: #141821;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 1px 4px rgba(18, 28, 48, 0.06);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .telemetry-btn:hover {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(25, 35, 55, 0.22);
+  color: #141821;
 }
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .top-nav-tabs {
-  background: rgba(255, 255, 255, 0.55);
-  border-color: rgba(25, 35, 55, 0.12);
+  background: rgba(255, 255, 255, 0.56);
+  border-color: rgba(25, 35, 55, 0.11);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 2px 10px rgba(18, 28, 48, 0.07);
 }
 
-:root[data-theme="liquidglass"][data-glass-scheme="light"] .top-nav-tabs .nav-item:hover {
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .top-nav-tabs .nav-item:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.6);
   color: #141821;
 }
 
@@ -6992,6 +7201,111 @@ html.tray-menu-page body {
   background: #ffffff;
   color: #141821;
   box-shadow: 0 2px 8px rgba(18, 28, 48, 0.12);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .action-btn,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mon-btn,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-pill-btn,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .dock-select,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .insp-ch-select {
+  background-color: rgba(255, 255, 255, 0.84);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(240, 245, 254, 0.72) 100%);
+  border-color: rgba(25, 35, 55, 0.14);
+  color: #141821;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 1px 4px rgba(18, 28, 48, 0.06);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .action-btn:hover,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mon-btn:hover,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-pill-btn:hover,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .dock-select:hover,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .dock-select.select-open,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .insp-ch-select:hover,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .insp-ch-select.select-open {
+  background-color: rgba(255, 255, 255, 0.98);
+  border-color: rgba(25, 35, 55, 0.24);
+  color: #141821;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 3px 10px rgba(18, 28, 48, 0.1);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .seg-group,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .bus-tabs,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .dsp-ch-tabs {
+  background: rgba(20, 30, 50, 0.07);
+  border-color: rgba(25, 35, 55, 0.11);
+  box-shadow: inset 0 1px 2px rgba(18, 28, 48, 0.06);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .seg-btn {
+  color: rgba(20, 26, 40, 0.72);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .seg-btn.active {
+  background: #ffffff;
+  color: #141821;
+  box-shadow: 0 2px 7px rgba(18, 28, 48, 0.12);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .custom-select-opt {
+  color: #1d2230;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .custom-select-opt:hover,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .custom-select-opt.selected {
+  background: #007aff;
+  background: AccentColor;
+  color: #ffffff;
+  color: AccentColorText;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .switch-toggle {
+  background: rgba(20, 30, 50, 0.16);
+  border-color: rgba(25, 35, 55, 0.14);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .switch-toggle::after {
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 20, 30, 0.22);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .switch-toggle.on {
+  background: #34c759;
+  background: AccentColor;
+  border-color: rgba(25, 35, 55, 0.18);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .scribble-input,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .db-type-input {
+  background: rgba(255, 255, 255, 0.92);
+  color: #141821;
+  border-color: AccentColor;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .fader-slot,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-slider {
+  background: rgba(20, 30, 50, 0.16);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .am-track {
+  background: rgba(20, 30, 50, 0.11);
+  border-color: rgba(25, 35, 55, 0.12);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .am-peak-pill {
+  color: #2c313d;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .icon-btn {
+  color: rgba(20, 26, 40, 0.65);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .icon-btn:hover {
+  background: rgba(20, 30, 50, 0.08);
+  color: #141821;
 }
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .brand-model,
