@@ -43,27 +43,21 @@ Collapse the full console into a resizable, always-on-top hardware faceplate for
 
 ---
 
-## What's New & Key Features
+## What's New & Why iD Interface vs. Audient iD Control?
 
-### Standalone Direct USB on Windows, macOS & Linux — No ADM Required
-* **Direct USB Engine (Windows, macOS & Linux — Zero Audient Software Needed):** Talks directly to your **iD1 / iD2 / iD2+ / iD4+** over USB (TUSBAudio driver on Windows, native IOKit alongside CoreAudio on macOS, native `usbdevfs` alongside ALSA/PipeWire/JACK on Linux) with live two-way hardware sync, 30fps metering, real hardware compressor gain reduction, and full DSP — zero background `AudientDeviceManager` or Bonjour needed. You can still toggle back to ADM mode anytime in Settings on Windows/macOS.
-* **macOS Native Experience (Apple Silicon & Intel Universal):** Includes an adaptive **Liquid Glass** theme (auto-syncs with macOS Light/Dark mode) and hides cleanly into the **top Menu Bar** (removing itself from the Dock until reopened).
-* **System Tray & First-Close Prompt:** The first time you press `×`, choose whether to minimize to the **System Tray** (Windows) / **Top Menu Bar** (macOS) or quit — and toggle anytime in Settings.
+### Beyond Official iD Control
+* **Zero Background Bloat (Windows, macOS & Linux):** Talks directly to your **iD1 / iD2 / iD2+ / iD4+** over **Direct USB** (TUSBAudio on Windows, native IOKit alongside CoreAudio on macOS, native `usbdevfs` alongside ALSA/PipeWire/JACK on Linux) — no `AudientDeviceManager` or Apple Bonjour required, and full **Linux** support that Audient never shipped. *(You can still switch to ADM mode anytime in Settings on Windows/macOS.)*
+* **Remembers Sample Rate, Buffer Size & Clock Source:** Automatically saves your chosen **Sample Rate**, **ASIO Buffer Size**, and **Clock Source** and restores them to your interface on app launch or USB replug — no more resetting every time you reconnect.
+* **Compact Floating Controller:** Collapse the full mixer into a sleek, always-on-top mini faceplate (`C`) for instant monitor/headphone volume, preamp gain, 48V, mute, dim, HPF, and live metering.
+* **Rebindable Hardware Function Button (Direct USB):** Map the physical **Fn** button on your iD MK3 to **Mute Mics (1 + 2)**, **Mute Mic 1**, **Mute Mic 2**, **Mute Headphones**, **Speakers / Headphones Swap**, **Mid / Side Check**, **Reference Level Recall**, **Global Mute (All Outputs)**, **Bypass Input DSP (A/B)**, or **Toggle Scene 1–4** (plus all standard Audient hardware functions).
+* **4 Instant Studio Scenes + Auto-Saving Working Scene:** Recall up to 4 full desk setups (`Alt+1–4` / `⌥1–4`), click an active scene to toggle back to your continuously saved live mix, and commit your desk directly to **onboard hardware flash** (`SAVE` / `RELOAD`, plus auto-save on close). Only changed parameters are written, so swaps are near-instant.
+* **9 Studio Themes + macOS Liquid Glass:** Pure Monochrome, Tactile Carbon, Warm Vintage, Brushed Gunmetal, Studio Daylight, Powdercoat Slate, Audient iD MK3, Prism Studio, Stealth Obsidian — plus an adaptive **Liquid Glass** theme on macOS that auto-syncs with system Light/Dark mode.
+* **True Desktop Integration:** Native Windows DWM window frame (Aero Snap, `Win+↑/↓`, `F11` fullscreen), macOS top Menu Bar mode (hides cleanly from the Dock), theme-matched right-click tray menu, first-close tray/quit prompt, persistent window & compact positions, and a **1-click self-updater**.
 
 ### Full Studio Console & Hardware DSP
 * **4-Bus Mixer (`Main Mix`, `Mix A`, `Mix B`, `Reverb`)** with Dual Peak + RMS metering, custom channel scribble strips, and instant `STEREO`/`MONO` pairing.
 * **Zero-Scroll Channel Strip & DSP Deck:** Preamp Gain, 48V, Mute, V-HPF, V-Phase, Tone (`Glow` / `HMX` / `Lift` / `Orbit`), 4-band Parametric EQ with live SVG response curve, Compressor with hardware GR meter and discrete `2:1 / 4:1 / 8:1 / 16:1` ratios, DSP Order, Record FX, and Reverb Send — all unlocked up to **96 kHz** and cleanly faded until engaged.
-* **4 Saved Scenes + Auto-Saving Working Scene:** Recall up to 4 desk setups (`Alt+1–4` / `⌥1–4`), click an active scene to toggle back to your continuously saved live mix, and commit your running desk directly to **iD2 onboard hardware flash** (`SAVE` / `RELOAD` in Settings, plus auto-save on close).
 * **Preamps + SmartGain**, **3D RoomTune Monitoring Soundstage** *(experimental — not yet hardware-tested)*, and **Output & Loopback Routing Matrix** (with Virtual Thru loud-output guard).
-* **9 Built-in Studio Themes:** Pure Monochrome, Tactile Carbon, Warm Vintage, Brushed Gunmetal, Studio Daylight, Powdercoat Slate, Audient iD MK3, Prism Studio, and Stealth Obsidian.
-* **Built-in Update Checker:** Polls GitHub Releases and surfaces a one-click update badge in the top bar and Settings.
-
-### Desktop Integration
-* **Native Windows Window Frame:** Full Console uses the native Windows DWM frame (theme-aware border, corners & shadow, Aero Snap, `Win+↑/↓`, double-click title bar) plus `F11` true fullscreen.
-* **Themed Tray Menu:** Right-click the tray icon for a menu that matches your current theme — open/focus, switch Compact ↔ Full, Mute Main, or Quit.
-* **Remembers Your Setup:** Restores Compact vs Full mode, your selected compact channel, and window monitor/position on next launch. Compact Mode collapses to the top-right of the console by default (or remembers its own spot — toggle in Settings).
-* **Rebindable Hardware Function Button:** Change what the physical **Function button** on your iD MK3 does — map it to **Mute Mics (1 + 2)**, **Mute Mic 1**, **Mute Mic 2**, **Mute Headphones**, **Speakers / Headphones Swap**, **Mid / Side Check**, **Reference Level Recall**, **Global Mute (All Outputs)**, **Bypass Input DSP (A/B)**, or **Toggle Scene 1** (plus all standard Audient hardware functions).
-* **Instant Scene Recall:** Only changed parameters are sent to the hardware, so scene swaps are near-instant.
 
 ---
 
