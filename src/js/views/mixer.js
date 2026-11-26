@@ -1845,6 +1845,7 @@ export function createMixerView(container, store) {
         inputChs: null,
       };
       if (meta.isDig && !showDigital) return;
+      if (activeBusIdx === 3 && meta.isReverb) return;
 
       const pairPath = [...mixPath, ci];
       const linkPath = store.findParamPath(pairPath, "StereoLink");

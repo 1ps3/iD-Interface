@@ -1230,7 +1230,13 @@ fn hw_get_room_eq_band(dev: &TusbDevice<'_>, cs: u8, ch: u8, def_t: i32, def_f: 
             let f = u16::from_le_bytes([b[2], b[3]]) as f64;
             let g = q88_to_db(&b[4..6]);
             let q = (u16::from_le_bytes([b[6], b[7]]) as f64) / 256.0;
-            return (t, f.clamp(20.0, 20000.0), g.clamp(-12.0, 12.0), q.clamp(0.3, 12.0));
+            // Hardware stores placeholder (1000 Hz, +1 dB) for bypassed (t==11) bands; keep clean default spread when bypassed.
+            if t == 11 {
+                return (11, def_f, 0.0, def_q);
+            }
+            if (1..=14).contains(&t) && (20.0..=20000.0).contains(&f) {
+                return (t, f, g.clamp(-12.0, 12.0), q.clamp(0.3, 12.0));
+            }
         }
     }
     (def_t, def_f, 0.0, def_q)
@@ -1243,7 +1249,13 @@ fn hw_get_eq_band(dev: &TusbDevice<'_>, cs: u8, ch: u8, def_t: i32, def_f: f64, 
             let f = u16::from_le_bytes([b[2], b[3]]) as f64;
             let g = q88_to_db(&b[4..6]);
             let q = (u16::from_le_bytes([b[6], b[7]]) as f64) / 256.0;
-            return (t, f.max(20.0), g, q.clamp(0.1, 20.0));
+            // Hardware stores placeholder frequencies (e.g. 1000 Hz / 20000 Hz) for bypassed (t==11) bands; keep clean default spread.
+            if t == 11 {
+                return (11, def_f, 0.0, def_q);
+            }
+            if (1..=14).contains(&t) && (20.0..=20000.0).contains(&f) {
+                return (t, f, g.clamp(-12.0, 12.0), q.clamp(0.1, 20.0));
+            }
         }
     }
     (def_t, def_f, 0.0, def_q)
@@ -1525,17 +1537,21 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
         let mut pol_p = None;
 
         if is_analog {
-            let gain = hw_get_q88(dev, ENT_INPUTS, 0x00, ch, 0.0);
-            let trim = hw_get_q88(dev, ENT_INPUTS, 0x02, ch, 0.0);
-            let mute = hw_get_u8(dev, ENT_INPUTS, 0x01, ch, 0) as i32;
-            let p48 = hw_get_u8(dev, ENT_INPUTS, 0x05, ch, 0) as i32;
-            let glow = hw_get_u8(dev, ENT_INPUTS, 0x03, ch, 0) as i32;
-            let orbit = hw_get_u8(dev, ENT_INPUTS, 0x04, ch, 0) as i32;
-            let lift = hw_get_u8(dev, ENT_INPUTS, 0x0A, ch, 0) as i32;
-            let hpf_en = hw_get_u8(dev, ENT_INPUTS, 0x0B, ch, 0) as i32;
-            let armed = hw_get_u8(dev, ENT_INPUTS, 0x08, ch, 0) as i32;
-            let stereo_link = hw_get_u8(dev, ENT_INPUTS, 0x0C, ch, 0) as i32;
-            let (_, hpf_freq, _, _) = hw_get_eq_band(dev, 0x06, ch, 3, 100.0, 0.71);
+            let raw_gain = hw_get_q88(dev, ENT_INPUTS, 0x00, ch, 0.0);
+            let gain = if (-0.5..=60.0).contains(&raw_gain) { raw_gain.clamp(0.0, 58.0) } else { 0.0 };
+            let raw_trim = hw_get_q88(dev, ENT_INPUTS, 0x02, ch, 0.0);
+            let trim = if (-0.5..=16.0).contains(&raw_trim) { raw_trim.clamp(0.0, 15.0) } else { 0.0 };
+            let mute = if hw_get_u8(dev, ENT_INPUTS, 0x01, ch, 0) == 1 { 1 } else { 0 };
+            let p48 = if hw_get_u8(dev, ENT_INPUTS, 0x05, ch, 0) == 1 { 1 } else { 0 };
+            let glow = if hw_get_u8(dev, ENT_INPUTS, 0x03, ch, 0) == 1 { 1 } else { 0 };
+            let raw_orbit = hw_get_u8(dev, ENT_INPUTS, 0x04, ch, 0);
+            let orbit = if raw_orbit <= 2 { raw_orbit as i32 } else { 0 };
+            let lift = if hw_get_u8(dev, ENT_INPUTS, 0x0A, ch, 0) == 1 { 1 } else { 0 };
+            let hpf_en = if hw_get_u8(dev, ENT_INPUTS, 0x0B, ch, 0) == 1 { 1 } else { 0 };
+            let armed = if hw_get_u8(dev, ENT_INPUTS, 0x08, ch, 0) == 1 { 1 } else { 0 };
+            let stereo_link = if hw_get_u8(dev, ENT_INPUTS, 0x0C, ch, 0) == 1 { 1 } else { 0 };
+            let (_, raw_hpf_freq, _, _) = hw_get_eq_band(dev, 0x06, ch, 3, 100.0, 0.71);
+            let hpf_freq = if (20.0..=500.0).contains(&raw_hpf_freq) { raw_hpf_freq } else { 100.0 };
 
             let mut add_p = |n: ValueTreeNode, bind: HwBinding, reg: Option<(u8, u8)>| -> Vec<usize> {
                 let idx = ch_children.len();
@@ -1673,18 +1689,23 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
         //   0x04=Blend/Wet (u16: 0=bypassed, 1..32767=active blend), 0x0E=Makeup(Q8.8 dB)
         let comp_idx = ch_children.len();
         let comp_p = [ch_p.as_slice(), &[comp_idx]].concat();
-        let atk = (hw_get_u16(dev, ENT_DSP, 0x00, ch, 60) as f64) / 6.0;
-        let rel = (hw_get_u16(dev, ENT_DSP, 0x01, ch, 600) as f64) / 6.0;
-        let thresh = hw_get_q88(dev, ENT_DSP, 0x02, ch, 0.0);
-        let ratio = hw_get_q88(dev, ENT_DSP, 0x03, ch, 2.0).max(2.0);
+        let raw_atk = hw_get_u16(dev, ENT_DSP, 0x00, ch, 60);
+        let atk = if (1..=1500).contains(&raw_atk) { (raw_atk as f64) / 6.0 } else { 10.0 };
+        let raw_rel = hw_get_u16(dev, ENT_DSP, 0x01, ch, 600);
+        let rel = if (60..=6000).contains(&raw_rel) { (raw_rel as f64) / 6.0 } else { 100.0 };
+        let raw_thresh = hw_get_q88(dev, ENT_DSP, 0x02, ch, 0.0);
+        let thresh = if (-60.5..=0.5).contains(&raw_thresh) { raw_thresh.clamp(-60.0, 0.0) } else { 0.0 };
+        let raw_ratio = hw_get_q88(dev, ENT_DSP, 0x03, ch, 2.0);
+        let ratio = if (1.0..=20.5).contains(&raw_ratio) { raw_ratio.clamp(2.0, 20.0) } else { 2.0 };
         let raw_blend = hw_get_u16(dev, ENT_DSP, 0x04, ch, 0);
-        let byps = if raw_blend == 0 { 1 } else { 0 };
-        let blend = if raw_blend == 0 {
+        let byps = if raw_blend == 0 || raw_blend > 32767 { 1 } else { 0 };
+        let blend = if byps == 1 {
             settings.comp_blend.get(&ch).copied().unwrap_or(1.0).clamp(0.0, 1.0)
         } else {
             (raw_blend as f64 / 32767.0).clamp(0.0, 1.0)
         };
-        let makeup = hw_get_q88(dev, ENT_DSP, 0x0E, ch, 0.0).clamp(0.0, 12.0);
+        let raw_makeup = hw_get_q88(dev, ENT_DSP, 0x0E, ch, 0.0);
+        let makeup = if (-0.5..=12.5).contains(&raw_makeup) { raw_makeup.clamp(0.0, 12.0) } else { 0.0 };
         let comp_byps_p = [comp_p.as_slice(), &[0]].concat();
         let comp_blend_p = [comp_p.as_slice(), &[6]].concat();
         let comp_children = vec![
@@ -1765,11 +1786,12 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
     } else {
         raw_ref_vol
     };
-    let alt_trim = hw_get_q88(dev, ENT_MONITOR, 0x08, 0, 0.0);
-    let speaker_sel = hw_get_u8(dev, ENT_MONITOR, 0x07, 0, 0) as i32;
+    let raw_alt_trim = hw_get_q88(dev, ENT_MONITOR, 0x08, 0, 0.0);
+    let alt_trim = if (-13.0..=13.0).contains(&raw_alt_trim) { raw_alt_trim.clamp(-12.0, 12.0) } else { 0.0 };
+    let speaker_sel = if hw_get_u8(dev, ENT_MONITOR, 0x07, 0, 0) == 1 { 1 } else { 0 };
 
-    let hp1_vol = hw_get_q88(dev, ENT_OUTPUTS, 0x01, 4, -28.0);
-    let hp1_mute = hw_get_u8(dev, ENT_OUTPUTS, 0x02, 4, 0) as i32;
+    let hp1_vol = hw_get_q88(dev, ENT_OUTPUTS, 0x01, 4, -28.0).clamp(-128.0, 0.0);
+    let hp1_mute = if hw_get_u8(dev, ENT_OUTPUTS, 0x02, 4, 0) == 1 { 1 } else { 0 };
     let hp1_src_raw = hw_get_u8(dev, ENT_OUTPUTS, 0x00, 4, 0x2B);
     let hp1_src = hw_out_src_to_ui(hp1_src_raw, true);
     // Hardware-verified ENT_ROOM (0x08) registers:
@@ -1778,12 +1800,14 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
     //   cs=0x06 ch=0/1 (u32): Speaker L/R Delay (hundredths of ms, 0..1000 = 0..10.00ms)
     //   cs=0x23 ch=0 (i32 Q24.8): Profile Trim (dB)
     let room_flags = hw_get_u16(dev, ENT_ROOM, 0x01, 0, 0);
-    let room_byps = if (room_flags & 0x02) != 0 { 1 } else { 0 };
-    let prof_trim = hw_get_q24_8(dev, ENT_ROOM, 0x23, 0, 0.0).clamp(-12.0, 12.0);
-    let spk_l_trim = hw_get_q24_8(dev, ENT_ROOM, 0x04, 0, 0.0).clamp(-12.0, 12.0);
-    let spk_r_trim = hw_get_q24_8(dev, ENT_ROOM, 0x04, 1, 0.0).clamp(-12.0, 12.0);
-    let spk_l_dly = (hw_get_u32(dev, ENT_ROOM, 0x06, 0, 0) as f64 / 100.0).clamp(0.0, 10.0);
-    let spk_r_dly = (hw_get_u32(dev, ENT_ROOM, 0x06, 1, 0) as f64 / 100.0).clamp(0.0, 10.0);
+    let room_byps = if room_flags != 0xFFFF && (room_flags & 0x02) != 0 { 1 } else { 0 };
+    let safe_room_trim = |v: f64| if (-13.0..=13.0).contains(&v) { v.clamp(-12.0, 12.0) } else { 0.0 };
+    let safe_room_dly = |v: u32| if v <= 1000 { v as f64 / 100.0 } else { 0.0 };
+    let prof_trim = safe_room_trim(hw_get_q24_8(dev, ENT_ROOM, 0x23, 0, 0.0));
+    let spk_l_trim = safe_room_trim(hw_get_q24_8(dev, ENT_ROOM, 0x04, 0, 0.0));
+    let spk_r_trim = safe_room_trim(hw_get_q24_8(dev, ENT_ROOM, 0x04, 1, 0.0));
+    let spk_l_dly = safe_room_dly(hw_get_u32(dev, ENT_ROOM, 0x06, 0, 0));
+    let spk_r_dly = safe_room_dly(hw_get_u32(dev, ENT_ROOM, 0x06, 1, 0));
 
     let mut mc_children = vec![
         param_f64("Vol", main_vol, None, true),                     // 0
@@ -2108,9 +2132,12 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
         }
         // Attach Reverb Engine parameters directly on Bus 3 ("Reverb") so mixer.js inspector finds them
         if bus == 3 {
-            let rev_decay = (hw_get_u16(dev, ENT_REVERB, 0x02, 0, 19660) as f64) / 32768.0;
-            let rev_damp_hz = hw_get_u16(dev, ENT_REVERB, 0x03, 0, 8000) as f64;
-            let rev_blend = (hw_get_u16(dev, ENT_REVERB, 0x04, 0, 26213) as f64) / 32768.0;
+            let raw_decay = hw_get_u16(dev, ENT_REVERB, 0x02, 0, 19660);
+            let rev_decay = if raw_decay <= 32768 { (raw_decay as f64) / 32768.0 } else { 0.6 };
+            let raw_damp = hw_get_u16(dev, ENT_REVERB, 0x03, 0, 8000);
+            let rev_damp_hz = if (20..=20000).contains(&raw_damp) { raw_damp as f64 } else { 8000.0 };
+            let raw_rev_blend = hw_get_u16(dev, ENT_REVERB, 0x04, 0, 26213);
+            let rev_blend = if raw_rev_blend <= 32768 { (raw_rev_blend as f64) / 32768.0 } else { 0.8 };
             let d_idx = bus_children.len();
             bus_children.push(param_f64("Decay", rev_decay, None, dsp_editable));
             bus_children.push(param_f64("Damping", rev_damp_hz, None, dsp_editable));
@@ -2532,7 +2559,8 @@ pub fn write_param_to_hardware(
         }
         HwBinding::ReverbParam { cs, scale } => {
             if let Some(v) = value.as_f64() {
-                let raw = (v * scale).round().clamp(0.0, 65535.0) as u16;
+                let max_val = if scale > 1.0 { 32767.0 } else { 20000.0 };
+                let raw = (v * scale).round().clamp(0.0, max_val) as u16;
                 let _ = dev.vendor_out(BREQ_PARAM, ENT_REVERB, (cs as u16) << 8, &raw.to_le_bytes());
             }
         }
