@@ -869,6 +869,26 @@ async fn get_backend_info(state: State<'_, AppState>) -> Result<BackendInfo, Str
 }
 
 #[tauri::command]
+fn get_system_accent() -> Option<i32> {
+    #[cfg(target_os = "macos")]
+    {
+        let out = std::process::Command::new("defaults")
+            .args(["read", "-g", "AppleAccentColor"])
+            .output()
+            .ok()?;
+        if !out.status.success() {
+            return None;
+        }
+        let s = String::from_utf8_lossy(&out.stdout);
+        return s.trim().parse::<i32>().ok();
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        None
+    }
+}
+
+#[tauri::command]
 async fn set_backend_mode(
     mode: BackendMode,
     app: AppHandle,
@@ -3409,6 +3429,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_adm_status,
             get_backend_info,
+            get_system_accent,
             set_backend_mode,
             get_full_state,
             save_hardware_boot_state,

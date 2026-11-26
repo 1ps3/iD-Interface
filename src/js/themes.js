@@ -75,9 +75,44 @@ const colorSchemeQuery =
     ? window.matchMedia("(prefers-color-scheme: light)")
     : null;
 
+const MAC_ACCENT_PALETTE = {
+  [-1]: { light: "#8e8e93", dark: "#98989d", fg: "#ffffff" }, // Graphite
+  0: { light: "#ff3b30", dark: "#ff453a", fg: "#ffffff" },    // Red
+  1: { light: "#ff9500", dark: "#ff9f0a", fg: "#ffffff" },    // Orange
+  2: { light: "#ffcc00", dark: "#ffd60a", fg: "#141821" },    // Yellow
+  3: { light: "#28cd41", dark: "#30d158", fg: "#ffffff" },    // Green
+  4: { light: "#007aff", dark: "#0a84ff", fg: "#ffffff" },    // Blue
+  5: { light: "#af52de", dark: "#bf5af2", fg: "#ffffff" },    // Purple
+  6: { light: "#ff2d55", dark: "#ff375f", fg: "#ffffff" },    // Pink
+};
+
+let currentMacAccentCode = null;
+
+function applyMacAccentVars() {
+  const isLight = document.documentElement.dataset.glassScheme === "light";
+  const entry = MAC_ACCENT_PALETTE[currentMacAccentCode] || MAC_ACCENT_PALETTE[4];
+  const color = isLight ? entry.light : entry.dark;
+  document.documentElement.style.setProperty("--mac-accent", color);
+  document.documentElement.style.setProperty("--mac-accent-fg", entry.fg);
+}
+
+export async function refreshSystemAccent() {
+  const invoke = window.__TAURI__?.core?.invoke;
+  if (!invoke) return;
+  try {
+    const code = await invoke("get_system_accent");
+    currentMacAccentCode = typeof code === "number" ? code : null;
+    applyMacAccentVars();
+  } catch {}
+}
+
 function syncGlassColorScheme() {
   const isLight = Boolean(colorSchemeQuery && colorSchemeQuery.matches);
   document.documentElement.dataset.glassScheme = isLight ? "light" : "dark";
+  const theme = document.documentElement.dataset.theme;
+  document.documentElement.dataset.lightUi =
+    theme === "daylight" || (theme === "liquidglass" && isLight) ? "true" : "false";
+  applyMacAccentVars();
 }
 
 if (colorSchemeQuery) {
@@ -95,6 +130,14 @@ if (colorSchemeQuery) {
   }
 }
 
+if (typeof window !== "undefined") {
+  window.addEventListener("focus", () => {
+    if (document.documentElement.dataset.platform === "macos") {
+      refreshSystemAccent();
+    }
+  });
+}
+
 export function getVisibleThemes(isMacOS = false) {
   return THEMES.filter((t) => !t.macosOnly || isMacOS);
 }
@@ -102,8 +145,9 @@ export function getVisibleThemes(isMacOS = false) {
 export function applyThemeToDocument(themeId) {
   const valid = THEMES.some((t) => t.id === themeId) ? themeId : "obsidian";
   document.documentElement.dataset.theme = valid;
+  syncGlassColorScheme();
   if (valid === "liquidglass") {
-    syncGlassColorScheme();
+    refreshSystemAccent();
   }
   return valid;
 }
