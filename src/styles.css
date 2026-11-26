@@ -3527,13 +3527,16 @@ html.is-snapped body {
 .rt-eq-oled {
   position: relative;
   flex: 1 1 auto;
-  min-height: 132px;
-  max-height: 190px;
+  min-height: 145px;
   background: #0a0a0d;
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.55);
+}
+
+.rt-spk-select {
+  min-width: 175px;
 }
 
 .rt-eq-band-bar {
@@ -3553,30 +3556,99 @@ html.is-snapped body {
   flex: 1 1 140px;
 }
 
-.rt-profile-bar {
+.rt-profiles-section {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   padding-top: 6px;
   border-top: 1px solid var(--border-subtle);
 }
 
-.rt-profile-select {
-  min-width: 175px;
+.rt-profiles-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.rt-profile-preview {
-  width: 140px;
-  height: 32px;
-  flex-shrink: 0;
-  background: #0a0a0d;
+.rt-profiles-hint {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.rt-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.rt-profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease, transform 100ms ease, box-shadow 140ms ease;
+}
+
+.rt-profile-card:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.rt-profile-card.active {
+  border-color: var(--mac-accent, #a78bfa);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--mac-accent, #a78bfa) 35%, transparent);
+}
+
+.rt-profile-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.rt-profile-card-name {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rt-profile-save-btn {
+  border: 1px solid var(--border);
+  background: var(--bg-inset);
+  color: var(--text-secondary);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.rt-profile-save-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.rt-profile-card-oled {
+  width: 100%;
+  height: 30px;
+  background: #0a0a0d;
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
   overflow: hidden;
   padding: 2px;
 }
 
-.rt-profile-preview svg {
+.rt-profile-card-oled svg {
   display: block;
   width: 100%;
   height: 100%;

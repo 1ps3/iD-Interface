@@ -365,7 +365,10 @@ export function createMonitoringView(container, store) {
       <!-- Manual RoomTune 6-Band Speaker EQ Panel -->
       <div class="rt-eq-panel" id="rtEqPanel" style="display:${roomViewMode === "eq" ? "flex" : "none"};">
         <div class="rt-eq-head">
-          <div class="rt-eq-spk-tabs" id="rtEqSpkTabs"></div>
+          <div class="rt-eq-spk-tabs">
+            <span class="micro-label">SPEAKER</span>
+            <select class="dock-select rt-spk-select" id="rtEqSpkSelect"></select>
+          </div>
           <div class="rt-eq-head-actions">
             <button type="button" class="mini-pill-btn ${linkLrEq ? "active" : ""}" id="btnRtEqLink" title="Link Left &amp; Right Speaker EQ edits">LINK L+R</button>
             <button type="button" class="mini-pill-btn" id="btnRtEqFlat" title="Reset all RoomTune EQ bands to flat (0 dB)">FLAT ALL</button>
@@ -406,18 +409,12 @@ export function createMonitoringView(container, store) {
         </div>
         <div class="rt-eq-band-bar" id="rtEqBandBar"></div>
         <div class="rt-eq-controls" id="rtEqControls"></div>
-        <div class="rt-profile-bar" id="rtProfileBar">
-          <span class="micro-label">EQ PROFILE</span>
-          <select class="dock-select rt-profile-select" id="rtProfileSelect"></select>
-          <div class="rt-profile-preview" title="Selected profile curve preview">
-            <svg id="rtProfilePreviewSvg" viewBox="0 0 140 40" preserveAspectRatio="none">
-              <line x1="0" y1="20" x2="140" y2="20" class="eq-grid-zero" vector-effect="non-scaling-stroke" />
-              <path id="rtProfilePreviewFill" fill="rgba(167, 139, 250, 0.22)" />
-              <path id="rtProfilePreviewCurve" fill="none" stroke="#f2f2f2" stroke-width="1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
-            </svg>
+        <div class="rt-profiles-section">
+          <div class="rt-profiles-head">
+            <span class="micro-label">ROOMTUNE EQ PROFILES</span>
+            <span class="rt-profiles-hint">Click any profile card to apply · Save your own in Custom 1–3</span>
           </div>
-          <button type="button" class="mini-pill-btn green-active" id="btnRtProfApply">APPLY</button>
-          <button type="button" class="mini-pill-btn" id="btnRtProfSave" title="Save current Room EQ curve into selected Custom slot">SAVE</button>
+          <div class="rt-profile-grid" id="rtProfileGrid"></div>
         </div>
       </div>
 
@@ -735,7 +732,7 @@ export function createMonitoringView(container, store) {
 
     // --- Manual RoomTune 6-Band Speaker EQ Editor (Matches Preamps EQ + Profiles) ---
     const rtEqPanel = stageEl.querySelector("#rtEqPanel");
-    const rtEqSpkTabs = stageEl.querySelector("#rtEqSpkTabs");
+    const rtEqSpkSelect = stageEl.querySelector("#rtEqSpkSelect");
     const rtEqSvg = stageEl.querySelector("#rtEqSvg");
     const rtEqBandFills = stageEl.querySelector("#rtEqBandFills");
     const rtEqFillPath = stageEl.querySelector("#rtEqFillPath");
@@ -746,11 +743,7 @@ export function createMonitoringView(container, store) {
     const rtEqControls = stageEl.querySelector("#rtEqControls");
     const btnRtEqLink = stageEl.querySelector("#btnRtEqLink");
     const btnRtEqFlat = stageEl.querySelector("#btnRtEqFlat");
-    const rtProfileSelect = stageEl.querySelector("#rtProfileSelect");
-    const rtProfilePreviewFill = stageEl.querySelector("#rtProfilePreviewFill");
-    const rtProfilePreviewCurve = stageEl.querySelector("#rtProfilePreviewCurve");
-    const btnRtProfApply = stageEl.querySelector("#btnRtProfApply");
-    const btnRtProfSave = stageEl.querySelector("#btnRtProfSave");
+    const rtProfileGrid = stageEl.querySelector("#rtProfileGrid");
 
     stageEl.querySelectorAll("#rtViewModeSeg .seg-btn").forEach((b) => {
       b.addEventListener("click", () => {
@@ -845,69 +838,111 @@ export function createMonitoringView(container, store) {
       return [...BUILTIN_RT_PROFILES, ...customs];
     }
 
-    function renderProfilePreview() {
-      const all = getAllRtProfiles();
-      const prof = all.find((p) => p.id === selectedProfileId) || all[0];
-      if (!prof || !rtProfilePreviewCurve || !rtProfilePreviewFill) return;
-      const pts = [];
+    function buildMiniCurvePaths(bands) {
+      const compPts = [];
+      const bandPts = bands.map(() => []);
       for (let x = 0; x <= 140; x += 3) {
         const fr = 20 * Math.pow(1000, x / 140);
         let sum = 0;
-        for (const b of prof.bands) sum += evalRtBandDb(fr, b);
+        for (let j = 0; j < bands.length; j++) {
+          const bdb = evalRtBandDb(fr, bands[j]);
+          sum += bdb;
+          const by = 20 - (Math.max(-12, Math.min(12, bdb)) / 12) * 16;
+          bandPts[j].push(`${x === 0 ? "M" : "L"}${x} ${by.toFixed(1)}`);
+        }
         const y = 20 - (Math.max(-12, Math.min(12, sum)) / 12) * 16;
-        pts.push(`${x === 0 ? "M" : "L"}${x} ${y.toFixed(1)}`);
+        compPts.push(`${x === 0 ? "M" : "L"}${x} ${y.toFixed(1)}`);
       }
-      const d = pts.join(" ");
-      rtProfilePreviewCurve.setAttribute("d", d);
-      rtProfilePreviewFill.setAttribute("d", `${d} L140 20 L0 20 Z`);
-      if (btnRtProfSave) btnRtProfSave.style.display = prof.custom ? "" : "none";
-    }
-
-    function syncProfileDropdown() {
-      if (!rtProfileSelect) return;
-      const all = getAllRtProfiles();
-      rtProfileSelect.innerHTML = all
-        .map((p) => `<option value="${p.id}" ${p.id === selectedProfileId ? "selected" : ""}>${p.name}</option>`)
+      const d = compPts.join(" ");
+      const bandFills = bands
+        .map((b, j) => {
+          if (b.t === 11 || Math.abs(b.g) < 0.05) return "";
+          const col = (RT_EQ_BAND_META[j] || RT_EQ_BAND_META[1]).color;
+          return `<path d="${bandPts[j].join(" ")} L140 20 L0 20 Z" fill="${col}" fill-opacity="0.28" />`;
+        })
         .join("");
-      renderProfilePreview();
+      return { curve: d, fill: `${d} L140 20 L0 20 Z`, bandFills };
     }
 
-    rtProfileSelect?.addEventListener("change", () => {
-      selectedProfileId = rtProfileSelect.value;
-      renderProfilePreview();
-    });
-
-    btnRtProfApply?.addEventListener("click", () => {
+    function renderProfileCards() {
+      if (!rtProfileGrid) return;
       const all = getAllRtProfiles();
-      const prof = all.find((p) => p.id === selectedProfileId);
-      if (!prof) return;
-      prof.bands.forEach((b, i) => {
-        setEqBandField(i, "tP", b.t);
-        setEqBandField(i, "fP", b.f);
-        setEqBandField(i, "gP", b.g);
-        setEqBandField(i, "qP", b.q);
+      rtProfileGrid.innerHTML = all
+        .map((p) => {
+          const { curve, fill, bandFills } = buildMiniCurvePaths(p.bands);
+          const isActive = p.id === selectedProfileId;
+          return `
+            <div class="rt-profile-card ${isActive ? "active" : ""}" data-prof-id="${p.id}" role="button" tabindex="0">
+              <div class="rt-profile-card-head">
+                <span class="rt-profile-card-name">${p.name}</span>
+                ${
+                  p.custom
+                    ? `<button type="button" class="rt-profile-save-btn" data-save-prof="${p.id}" title="Save current Room EQ into this slot">SAVE</button>`
+                    : ""
+                }
+              </div>
+              <div class="rt-profile-card-oled">
+                <svg viewBox="0 0 140 40" preserveAspectRatio="none">
+                  <line x1="0" y1="20" x2="140" y2="20" class="eq-grid-zero" vector-effect="non-scaling-stroke" />
+                  ${bandFills}
+                  <path d="${fill}" fill="rgba(255, 255, 255, 0.06)" />
+                  <path d="${curve}" fill="none" stroke="#f2f2f2" stroke-width="1.5" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+                </svg>
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+
+      rtProfileGrid.querySelectorAll(".rt-profile-card").forEach((card) => {
+        card.addEventListener("click", (e) => {
+          if (e.target.closest("[data-save-prof]")) return;
+          const id = card.dataset.profId;
+          const prof = all.find((p) => p.id === id);
+          if (!prof) return;
+          selectedProfileId = id;
+          prof.bands.forEach((b, i) => {
+            setEqBandField(i, "tP", b.t);
+            setEqBandField(i, "fP", b.f);
+            setEqBandField(i, "gP", b.g);
+            setEqBandField(i, "qP", b.q);
+          });
+          renderProfileCards();
+          renderRoomEq();
+        });
       });
+
+      rtProfileGrid.querySelectorAll("[data-save-prof]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.saveProf;
+          const s = speakers[selectedSpkIdx];
+          if (!s || !s.eqBands.length || !id) return;
+          const curBands = s.eqBands.map((b, i) => {
+            const meta = RT_EQ_BAND_META[i] || RT_EQ_BAND_META[1];
+            return {
+              t: Number(store.getVal(b.tP, 11)),
+              f: Number(store.getVal(b.fP, meta.defF)),
+              g: Number(store.getVal(b.gP, 0)),
+              q: Number(store.getVal(b.qP, meta.defQ)),
+            };
+          });
+          const saved = { ...(store.getUiPref("roomEqProfiles", {}) || {}), [id]: curBands };
+          store.saveUiPref("roomEqProfiles", saved);
+          selectedProfileId = id;
+          renderProfileCards();
+        });
+      });
+    }
+
+    renderProfileCards();
+
+    rtEqSpkSelect?.addEventListener("change", () => {
+      selectedSpkIdx = Number(rtEqSpkSelect.value);
+      speakers.forEach(syncSpeakerNodeVisual);
+      renderSelectedSpeakerInspector();
       renderRoomEq();
     });
-
-    btnRtProfSave?.addEventListener("click", () => {
-      const s = speakers[selectedSpkIdx];
-      if (!s || !s.eqBands.length || !selectedProfileId.startsWith("custom_")) return;
-      const curBands = s.eqBands.map((b, i) => {
-        const meta = RT_EQ_BAND_META[i] || RT_EQ_BAND_META[1];
-        return {
-          t: Number(store.getVal(b.tP, 11)),
-          f: Number(store.getVal(b.fP, meta.defF)),
-          g: Number(store.getVal(b.gP, 0)),
-          q: Number(store.getVal(b.qP, meta.defQ)),
-        };
-      });
-      const saved = { ...(store.getUiPref("roomEqProfiles", {}) || {}), [selectedProfileId]: curBands };
-      store.saveUiPref("roomEqProfiles", saved);
-      syncProfileDropdown();
-    });
-
-    syncProfileDropdown();
 
     function renderRoomEq() {
       const s = speakers[selectedSpkIdx];
@@ -918,21 +953,13 @@ export function createMonitoringView(container, store) {
         return;
       }
 
-      if (rtEqSpkTabs) {
-        rtEqSpkTabs.innerHTML = speakers
+      if (rtEqSpkSelect) {
+        rtEqSpkSelect.innerHTML = speakers
           .map(
             (sp) =>
-              `<button type="button" class="mini-pill-btn ${sp.idx === selectedSpkIdx ? "active" : ""}" data-eq-spk="${sp.idx}">${sp.code} · ${sp.full}</button>`
+              `<option value="${sp.idx}" ${sp.idx === selectedSpkIdx ? "selected" : ""}>${sp.code} · ${sp.full}</option>`
           )
           .join("");
-        rtEqSpkTabs.querySelectorAll("[data-eq-spk]").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            selectedSpkIdx = Number(btn.dataset.eqSpk);
-            speakers.forEach(syncSpeakerNodeVisual);
-            renderSelectedSpeakerInspector();
-            renderRoomEq();
-          });
-        });
       }
 
       const bandsState = s.eqBands.map((b, i) => {
