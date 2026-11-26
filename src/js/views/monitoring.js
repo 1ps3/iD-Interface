@@ -617,7 +617,6 @@ export function createMonitoringView(container, store) {
 
     // --- Manual RoomTune 6-Band Speaker EQ Editor ---
     const rtEqPanel = stageEl.querySelector("#rtEqPanel");
-    const rtStage3d = stageEl.querySelector("#rtStage3d");
     const rtEqSpkTabs = stageEl.querySelector("#rtEqSpkTabs");
     const rtEqSvg = stageEl.querySelector("#rtEqSvg");
     const rtEqReadout = stageEl.querySelector("#rtEqReadout");
