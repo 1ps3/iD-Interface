@@ -228,8 +228,14 @@ impl AdmStore {
         let mut dirty = false;
         if let Some(v) = value.as_i64().map(|n| n as i32) {
             let d = &mut self.config.direct_usb;
-            if self.buf_path.as_deref() == Some(path) && d.buffer_size != v {
+            if self.sr_path.as_deref() == Some(path) && d.sample_rate != Some(v) {
+                d.sample_rate = Some(v);
+                dirty = true;
+            } else if self.buf_path.as_deref() == Some(path) && d.buffer_size != v {
                 d.buffer_size = v;
+                dirty = true;
+            } else if self.clk_path.as_deref() == Some(path) && d.clock_source != Some(v) {
+                d.clock_source = Some(v);
                 dirty = true;
             } else if self.fn_mode_path.as_deref() == Some(path)
                 && self.custom_fn_mode == CustomFnMode::None
@@ -1014,42 +1020,13 @@ async fn set_custom_fn_mode(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let mut queued: Vec<OutboundPropertyChange> = Vec::new();
     {
         let mut st = state.store.lock().await;
         st.custom_fn_mode = mode;
         st.config.custom_fn_mode = mode;
         st.save_current_config();
-
-        // Preserve the user's chosen hardware Function Button mode (so RoomTune stays untouched
-        // and users can freely combine hardware actions like Dim + Mute Mics). Only if the
-        // hardware Function Button is currently Off (0), switch it to Talkback (3) so the
-        // physical button fires FnActive events and lights its LED.
-        if mode != CustomFnMode::None {
-            let cur_hw = st.get_int_val(&st.fn_mode_path);
-            if cur_hw == 0 {
-                if let Some(p) = st.fn_mode_path.clone() {
-                    if let Some(root) = st.root.as_mut() {
-                        if let Some(n) = root.get_path_mut(&p) {
-                            n.props.insert("value".into(), JuceVar::Int(3));
-                        }
-                    }
-                    st.config.fn_key_mode = Some(3);
-                    st.config.direct_usb.fn_key_mode = 3;
-                    st.save_current_config();
-                    queued.push(OutboundPropertyChange {
-                        path: p,
-                        prop: "value".into(),
-                        value: JuceVar::Int(3),
-                    });
-                }
-            }
-        }
     }
 
-    for cmd in queued {
-        let _ = state.cmd_tx.send(cmd);
-    }
     let _ = app.emit("custom-fn-mode", mode);
     Ok(())
 }
@@ -2280,28 +2257,36 @@ async fn install_app_update(
         let app_esc = app_bundle.to_string_lossy().replace('\'', "'\\''");
         let dmg_esc = tmp_dmg.to_string_lossy().replace('\'', "'\\''");
         let mnt_esc = mnt_dir.to_string_lossy().replace('\'', "'\\''");
+        let pid = std::process::id();
         let script = format!(
-            "sleep 1; \
+            "for i in $(seq 1 50); do kill -0 {pid} 2>/dev/null || break; sleep 0.1; done; \
              rm -rf '{mnt}'; mkdir -p '{mnt}'; \
              hdiutil attach '{dmg}' -nobrowse -quiet -mountpoint '{mnt}' || exit 1; \
              NEW_APP=$(find '{mnt}' -maxdepth 1 -name '*.app' | head -n 1); \
              if [ -n \"$NEW_APP\" ]; then \
-               rm -rf '{app}' && cp -R \"$NEW_APP\" '{app}' && xattr -cr '{app}' 2>/dev/null || true; \
+               rm -rf '{app}' && ditto \"$NEW_APP\" '{app}' && xattr -cr '{app}' 2>/dev/null || true; \
              fi; \
              hdiutil detach '{mnt}' -quiet 2>/dev/null || true; \
              rm -rf '{mnt}' '{dmg}'; \
-             open -n '{app}'",
+             sleep 0.3; \
+             open '{app}' || open -n '{app}'",
+            pid = pid,
             mnt = mnt_esc,
             dmg = dmg_esc,
             app = app_esc,
         );
 
+        // Detach cleanly from the exiting app's process group/stdio so macOS doesn't kill the updater mid-copy
+        let detached = format!("nohup sh -c '{}' >/dev/null 2>&1 &", script.replace('\'', "'\\''"));
         std::process::Command::new("sh")
-            .args(["-c", &script])
+            .args(["-c", &detached])
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .spawn()
             .map_err(|e| format!("Failed to spawn macOS updater: {e}"))?;
 
-        tokio::time::sleep(Duration::from_millis(80)).await;
+        tokio::time::sleep(Duration::from_millis(120)).await;
         app.exit(0);
         Ok(())
     }

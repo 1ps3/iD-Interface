@@ -34,6 +34,16 @@ export function pickAssetUrls(release, isMac) {
       setupUrl: "",
     };
   }
+  const isLinux = /linux/i.test(navigator?.platform || navigator?.userAgent || "");
+  if (isLinux) {
+    const appimage = assets.find((a) => /\.AppImage$/i.test(a.name || ""));
+    const deb = assets.find((a) => /\.deb$/i.test(a.name || ""));
+    return {
+      downloadUrl: appimage?.browser_download_url || deb?.browser_download_url || releaseUrl,
+      portableUrl: "",
+      setupUrl: "",
+    };
+  }
   const setup = assets.find((a) => /setup\.exe$/i.test(a.name || ""));
   const portable = assets.find(
     (a) => /\.exe$/i.test(a.name || "") && !/setup\.exe$/i.test(a.name || "")

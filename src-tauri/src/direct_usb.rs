@@ -12,14 +12,7 @@ pub enum BackendMode {
 
 impl Default for BackendMode {
     fn default() -> Self {
-        #[cfg(target_os = "windows")]
-        {
-            Self::DirectUsb
-        }
-        #[cfg(not(target_os = "windows"))]
-        {
-            Self::Adm
-        }
+        Self::DirectUsb
     }
 }
 
@@ -44,7 +37,9 @@ pub struct BackendInfo {
 #[serde(default)]
 pub struct DirectUsbSettings {
     pub initialized: bool,
+    pub sample_rate: Option<i32>,
     pub buffer_size: i32,
+    pub clock_source: Option<i32>,
     pub mono_mode: i32,
     pub fn_key_mode: i32,
     pub vol_recall: i32,
@@ -69,7 +64,9 @@ impl Default for DirectUsbSettings {
     fn default() -> Self {
         Self {
             initialized: false,
+            sample_rate: None,   // Use live hardware sample rate until user sets one
             buffer_size: 256,    // Balanced studio latency (~5.3ms @ 48kHz)
+            clock_source: None,  // Use live hardware clock source until user sets one
             mono_mode: 1,        // CENTRE (standard L+R mono sum check)
             fn_key_mode: 1,      // Dim (most-used non-destructive monitor button)
             vol_recall: 1,       // ON (restore calibrated monitor volume)
@@ -868,7 +865,206 @@ mod transport {
     }
 }
 
-#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+#[cfg(target_os = "linux")]
+mod transport {
+    use std::ffi::{c_int, c_ulong, c_void};
+    use std::fs::{File, OpenOptions};
+    use std::os::unix::io::AsRawFd;
+
+    #[repr(C)]
+    struct UsbdevfsCtrlTransfer {
+        b_request_type: u8,
+        b_request: u8,
+        w_value: u16,
+        w_index: u16,
+        w_length: u16,
+        timeout: u32,
+        data: *mut c_void,
+    }
+
+    // _IOWR('U', 0, struct usbdevfs_ctrltransfer)
+    const USBDEVFS_CONTROL: c_ulong = (3u64 << 30) as c_ulong
+        | ((std::mem::size_of::<UsbdevfsCtrlTransfer>() as c_ulong) << 16)
+        | ((b'U' as c_ulong) << 8);
+
+    extern "C" {
+        fn ioctl(fd: c_int, request: c_ulong, ...) -> c_int;
+    }
+
+    pub fn is_driver_dll_available() -> bool {
+        true
+    }
+
+    pub struct TusbApi;
+
+    impl TusbApi {
+        pub fn load() -> Result<Self, String> {
+            Ok(Self)
+        }
+
+        pub fn open_first(&self) -> Result<TusbDevice<'_>, String> {
+            let entries = std::fs::read_dir("/sys/bus/usb/devices")
+                .map_err(|e| format!("Failed to scan /sys/bus/usb/devices: {e}"))?;
+
+            for entry in entries.flatten() {
+                let p = entry.path();
+                let vid = match std::fs::read_to_string(p.join("idVendor")) {
+                    Ok(s) => s.trim().to_ascii_lowercase(),
+                    Err(_) => continue,
+                };
+                if vid != "2708" {
+                    continue;
+                }
+                let pid = match std::fs::read_to_string(p.join("idProduct")) {
+                    Ok(s) => s.trim().to_ascii_lowercase(),
+                    Err(_) => continue,
+                };
+                let fallback_name = match pid.as_str() {
+                    "0014" => "iD1",
+                    "0015" => "iD2",
+                    "0016" => "iD2+",
+                    "0018" => "iD4+",
+                    _ => continue,
+                };
+                let busnum: u32 = match std::fs::read_to_string(p.join("busnum"))
+                    .ok()
+                    .and_then(|s| s.trim().parse().ok())
+                {
+                    Some(n) => n,
+                    None => continue,
+                };
+                let devnum: u32 = match std::fs::read_to_string(p.join("devnum"))
+                    .ok()
+                    .and_then(|s| s.trim().parse().ok())
+                {
+                    Some(n) => n,
+                    None => continue,
+                };
+                let raw_name = std::fs::read_to_string(p.join("product"))
+                    .unwrap_or_default()
+                    .trim()
+                    .to_string();
+                let model_name = raw_name
+                    .strip_prefix("Audient ")
+                    .or_else(|| raw_name.strip_prefix("AUDIENT "))
+                    .unwrap_or(&raw_name)
+                    .trim()
+                    .to_string();
+                let model_name = if model_name.is_empty() {
+                    fallback_name.to_string()
+                } else {
+                    model_name
+                };
+
+                let dev_path = format!("/dev/bus/usb/{busnum:03}/{devnum:03}");
+                let file = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(&dev_path)
+                    .map_err(|e| {
+                        format!(
+                            "Found Audient {model_name} at {dev_path}, but failed to open ({e}). Install the Audient udev rule (99-audient-id.rules)."
+                        )
+                    })?;
+
+                let dev = TusbDevice {
+                    _marker: std::marker::PhantomData,
+                    file,
+                    model_name,
+                };
+                // Verify control endpoint is awake before reporting ready
+                if dev.vendor_in(0x01, 0x00, 0x0200, 4).is_err() {
+                    return Err("Audient MK3 device still initializing".into());
+                }
+                return Ok(dev);
+            }
+
+            Err("No supported Audient MK3 device (iD1, iD2, iD2+, iD4+) detected".into())
+        }
+    }
+
+    pub struct TusbDevice<'a> {
+        _marker: std::marker::PhantomData<&'a ()>,
+        file: File,
+        model_name: String,
+    }
+
+    impl<'a> TusbDevice<'a> {
+        pub fn vendor_in(
+            &self,
+            b_req: u8,
+            entity: u8,
+            w_value: u16,
+            len: u16,
+        ) -> Result<Vec<u8>, u32> {
+            let mut buf = vec![0u8; len as usize];
+            let mut ctrl = UsbdevfsCtrlTransfer {
+                b_request_type: 0xC1, // IN | Vendor | Interface
+                b_request: b_req,
+                w_value,
+                w_index: (entity as u16) << 8,
+                w_length: len,
+                timeout: 1000,
+                data: buf.as_mut_ptr() as *mut c_void,
+            };
+            let ret = unsafe { ioctl(self.file.as_raw_fd(), USBDEVFS_CONTROL, &mut ctrl) };
+            if ret < 0 {
+                return Err(std::io::Error::last_os_error().raw_os_error().unwrap_or(1) as u32);
+            }
+            buf.truncate((ret as usize).min(buf.len()));
+            Ok(buf)
+        }
+
+        pub fn vendor_out(
+            &self,
+            b_req: u8,
+            entity: u8,
+            w_value: u16,
+            data: &[u8],
+        ) -> Result<(), u32> {
+            let mut ctrl = UsbdevfsCtrlTransfer {
+                b_request_type: 0x41, // OUT | Vendor | Interface
+                b_request: b_req,
+                w_value,
+                w_index: (entity as u16) << 8,
+                w_length: data.len() as u16,
+                timeout: 1000,
+                data: data.as_ptr() as *mut c_void,
+            };
+            let ret = unsafe { ioctl(self.file.as_raw_fd(), USBDEVFS_CONTROL, &mut ctrl) };
+            if ret < 0 {
+                return Err(std::io::Error::last_os_error().raw_os_error().unwrap_or(1) as u32);
+            }
+            Ok(())
+        }
+
+        pub fn get_sample_rate(&self) -> Option<u32> {
+            self.vendor_in(0x01, 0x00, 0x0200, 4)
+                .ok()
+                .filter(|b| b.len() >= 4)
+                .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+                .filter(|&sr| sr > 0)
+        }
+
+        pub fn set_sample_rate(&self, sr: u32) -> Result<(), u32> {
+            self.vendor_out(0x01, 0x00, 0x0200, &sr.to_le_bytes())
+        }
+
+        pub fn set_clock_source(&self, _clk_id: u32) -> Result<(), u32> {
+            Ok(())
+        }
+
+        pub fn set_asio_buffer_size(&self, _samples: u32) -> Result<(), u32> {
+            Ok(())
+        }
+
+        pub fn detect_model_name(&self) -> String {
+            self.model_name.clone()
+        }
+    }
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
 mod transport {
     pub struct TusbApi;
     pub struct TusbDevice<'a>(std::marker::PhantomData<&'a ()>);
@@ -1125,7 +1321,7 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
         })
         .unwrap_or_default();
 
-    let sr = dev
+    let mut sr = dev
         .get_sample_rate()
         .or_else(|| {
             dev.vendor_in(BREQ_PARAM, ENT_SYSTEM, 0x0200, 4)
@@ -1134,10 +1330,29 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
                 .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
         })
         .unwrap_or(48000);
-    let dsp_editable = sr <= 96000;
-
-    let clk_src = hw_get_u8(dev, ENT_SYSTEM, 0x03, 0, 0) as i32;
+    let mut clk_src = hw_get_u8(dev, ENT_SYSTEM, 0x03, 0, 0) as i32;
     let buf_size = settings.buffer_size;
+
+    // Restore user's saved Audio Engine settings (Sample Rate, Buffer Size, Clock Source) on connect
+    if let Some(saved_sr) = settings.sample_rate {
+        if saved_sr > 0 && saved_sr as u32 != sr {
+            if dev.set_sample_rate(saved_sr as u32).is_ok() {
+                sr = saved_sr as u32;
+            }
+        }
+    }
+    if let Some(saved_clk) = settings.clock_source {
+        if saved_clk != clk_src {
+            let _ = dev.set_clock_source(saved_clk as u32);
+            let _ = dev.vendor_out(BREQ_PARAM, ENT_SYSTEM, 0x0300, &[saved_clk as u8]);
+            clk_src = saved_clk;
+        }
+    }
+    if buf_size > 0 {
+        let _ = dev.set_asio_buffer_size(buf_size as u32);
+    }
+
+    let dsp_editable = sr <= 96000;
 
     // First-time Direct USB launch: seed pro monitor defaults onto hardware where appropriate
     // (never touches 48V, Glow, Lift, Orbit, Gain, Main/HP1 Vol, or Mixer — those always come live from hardware).

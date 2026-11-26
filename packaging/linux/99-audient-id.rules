@@ -1,0 +1,5 @@
+# Audient iD MK3 (iD1, iD2, iD2+, iD4+) — allow non-root Direct USB control transfers for iD Interface
+SUBSYSTEM=="usb", ATTR{idVendor}=="2708", ATTR{idProduct}=="0014", MODE="0666", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="2708", ATTR{idProduct}=="0015", MODE="0666", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="2708", ATTR{idProduct}=="0016", MODE="0666", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="2708", ATTR{idProduct}=="0018", MODE="0666", TAG+="uaccess"

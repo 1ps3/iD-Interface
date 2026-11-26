@@ -222,7 +222,7 @@ export function createSettingsView(container, store, callbacks = {}) {
       <div class="setting-pill-card">
         <span class="micro-label">HARDWARE ENGINE</span>
         <select class="dock-select" id="setEngine">
-          <option value="direct_usb">Direct USB (No ADM)</option>
+          <option value="direct_usb">Direct USB</option>
           <option value="adm">Audient Device Manager</option>
         </select>
       </div>
@@ -356,17 +356,9 @@ export function createSettingsView(container, store, callbacks = {}) {
       <div class="settings-card-row">
         <div>
           <div class="set-row-title">FUNCTION BUTTON</div>
-          <div class="set-row-desc">Hardware action on the physical iD function key</div>
+          <div class="set-row-desc" id="fnKeyDesc">Action assigned to the physical iD function key</div>
         </div>
         <select class="dock-select set-select" id="selFnKey"></select>
-      </div>
-
-      <div class="settings-card-row">
-        <div>
-          <div class="set-row-title">CUSTOM FN ACTION</div>
-          <div class="set-row-desc" id="fnKeyDesc">Optional software action combined with the Function button (e.g. Dim + Mute Mics)</div>
-        </div>
-        <select class="dock-select set-select" id="selCustomFn"></select>
       </div>
     `;
 
@@ -417,10 +409,8 @@ export function createSettingsView(container, store, callbacks = {}) {
     syncMonoMode();
 
     const selFn = monCol.querySelector("#selFnKey");
-    const selCustomFn = monCol.querySelector("#selCustomFn");
     const fnKeyDesc = monCol.querySelector("#fnKeyDesc");
     const CUSTOM_FN_OPTIONS = [
-      { value: "none", name: "None", desc: "Optional software action combined with the Function button (e.g. Dim + Mute Mics)" },
       { value: "mute_mics", name: "Mute Mics (1 + 2)", desc: "Toggle hardware preamp mute on Mic 1 & Mic 2 (cough button)" },
       { value: "mute_mic1", name: "Mute Mic 1", desc: "Toggle hardware preamp mute on Mic 1" },
       { value: "mute_mic2", name: "Mute Mic 2", desc: "Toggle hardware preamp mute on Mic 2" },
@@ -436,37 +426,57 @@ export function createSettingsView(container, store, callbacks = {}) {
       const vm = store.getVm(p.fnKeyMode);
       const hwOpts = vm?.options?.length ? vm.options : [{ value: 0, name: "Off" }];
       const curHw = store.getVal(p.fnKeyMode, 0);
-      const custom = store.customFnMode || "none";
+      const isDirect = activeEngine === "direct_usb";
+      const custom = isDirect ? store.customFnMode || "none" : "none";
 
       selFn.innerHTML = "";
-      for (const o of hwOpts) {
-        const opt = document.createElement("option");
-        opt.value = String(o.value);
-        opt.textContent = formatOptionTitle(o.name);
-        if (o.value === curHw) opt.selected = true;
-        selFn.appendChild(opt);
+      if (isDirect) {
+        const grpHw = document.createElement("optgroup");
+        grpHw.label = "Standard";
+        for (const o of hwOpts) {
+          const opt = document.createElement("option");
+          opt.value = `hw:${o.value}`;
+          opt.textContent = formatOptionTitle(o.name);
+          if (custom === "none" && o.value === curHw) opt.selected = true;
+          grpHw.appendChild(opt);
+        }
+        selFn.appendChild(grpHw);
+
+        const grpCustom = document.createElement("optgroup");
+        grpCustom.label = "Custom Studio Actions";
+        for (const o of CUSTOM_FN_OPTIONS) {
+          const opt = document.createElement("option");
+          opt.value = `custom:${o.value}`;
+          opt.textContent = o.name;
+          if (custom === o.value) opt.selected = true;
+          grpCustom.appendChild(opt);
+        }
+        selFn.appendChild(grpCustom);
+      } else {
+        for (const o of hwOpts) {
+          const opt = document.createElement("option");
+          opt.value = `hw:${o.value}`;
+          opt.textContent = formatOptionTitle(o.name);
+          if (o.value === curHw) opt.selected = true;
+          selFn.appendChild(opt);
+        }
       }
 
-      selCustomFn.innerHTML = "";
-      for (const o of CUSTOM_FN_OPTIONS) {
-        const opt = document.createElement("option");
-        opt.value = o.value;
-        opt.textContent = o.name;
-        if (o.value === custom) opt.selected = true;
-        selCustomFn.appendChild(opt);
-      }
-
-      const matchedCustom = CUSTOM_FN_OPTIONS.find((o) => o.value === custom);
+      const matchedCustom = isDirect ? CUSTOM_FN_OPTIONS.find((o) => o.value === custom) : null;
       fnKeyDesc.textContent = matchedCustom
         ? matchedCustom.desc
-        : "Optional software action combined with the Function button (e.g. Dim + Mute Mics)";
+        : "Action assigned to the physical iD function key";
     };
     selFn.addEventListener("change", async () => {
-      await store.setParam(p.fnKeyMode, Number(selFn.value));
-      syncFn();
-    });
-    selCustomFn.addEventListener("change", async () => {
-      await store.setCustomFnMode(selCustomFn.value);
+      const val = selFn.value || "";
+      if (val.startsWith("custom:")) {
+        await store.setCustomFnMode(val.slice(7));
+      } else if (val.startsWith("hw:")) {
+        if ((store.customFnMode || "none") !== "none") {
+          await store.setCustomFnMode("none");
+        }
+        await store.setParam(p.fnKeyMode, Number(val.slice(3)));
+      }
       syncFn();
     });
     bind(p.fnKeyMode, syncFn);
@@ -703,6 +713,7 @@ export function createSettingsView(container, store, callbacks = {}) {
       if (updateStatusDesc && !lastUpdateCheck) {
         updateStatusDesc.textContent = `iD Interface v${appVersion} · Checks GitHub Releases`;
       }
+      syncFn();
       syncCloseAction();
     };
 
