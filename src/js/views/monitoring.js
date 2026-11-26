@@ -103,7 +103,7 @@ export function createMonitoringView(container, store) {
   let selectedEqBandIdx = 0;
   let roomViewMode = "stage"; // "stage" | "eq"
   let linkLrEq = true;
-  let selectedProfileId = "desk_fix";
+  let selectedProfileId = "";
   let speakerNodeEls = [];
   let stageResizeObs = null;
 
@@ -944,24 +944,9 @@ export function createMonitoringView(container, store) {
       renderRoomEq();
     });
 
-    function renderRoomEq() {
+    function drawRtEqGraphOnly() {
       const s = speakers[selectedSpkIdx];
-      if (!s || !s.eqBands.length) {
-        if (rtEqControls) {
-          rtEqControls.innerHTML = `<span class="set-row-desc">RoomTune manual EQ requires Direct USB mode.</span>`;
-        }
-        return;
-      }
-
-      if (rtEqSpkSelect) {
-        rtEqSpkSelect.innerHTML = speakers
-          .map(
-            (sp) =>
-              `<option value="${sp.idx}" ${sp.idx === selectedSpkIdx ? "selected" : ""}>${sp.code} · ${sp.full}</option>`
-          )
-          .join("");
-      }
-
+      if (!s || !s.eqBands.length) return null;
       const bandsState = s.eqBands.map((b, i) => {
         const meta = RT_EQ_BAND_META[i] || RT_EQ_BAND_META[1];
         return {
@@ -1031,7 +1016,28 @@ export function createMonitoringView(container, store) {
           });
         });
       }
+      return sel;
+    }
 
+    function renderRoomEq() {
+      const s = speakers[selectedSpkIdx];
+      if (!s || !s.eqBands.length) {
+        if (rtEqControls) {
+          rtEqControls.innerHTML = `<span class="set-row-desc">RoomTune manual EQ requires Direct USB mode.</span>`;
+        }
+        return;
+      }
+
+      if (rtEqSpkSelect) {
+        rtEqSpkSelect.innerHTML = speakers
+          .map(
+            (sp) =>
+              `<option value="${sp.idx}" ${sp.idx === selectedSpkIdx ? "selected" : ""}>${sp.code} · ${sp.full}</option>`
+          )
+          .join("");
+      }
+
+      const sel = drawRtEqGraphOnly();
       if (rtEqControls && sel) {
         const isOn = sel.t !== 11;
         const fLogVal = Math.round(((Math.log10(sel.f) - Math.log10(20)) / (Math.log10(20000) - Math.log10(20))) * 1000);
@@ -1054,30 +1060,50 @@ export function createMonitoringView(container, store) {
           </div>
         `;
 
-        rtEqControls.querySelector("#rtBandToggle")?.addEventListener("click", () => {
-          setEqBandField(sel.idx, "tP", isOn ? 11 : sel.meta.activeType);
+        const btnBandTog = rtEqControls.querySelector("#rtBandToggle");
+        const slF = rtEqControls.querySelector("#rtBandFreq");
+        const valF = rtEqControls.querySelector("#rtBandFreqV");
+        const slG = rtEqControls.querySelector("#rtBandGain");
+        const valG = rtEqControls.querySelector("#rtBandGainV");
+        const slQ = rtEqControls.querySelector("#rtBandQ");
+        const valQ = rtEqControls.querySelector("#rtBandQV");
+
+        const ensureBandEnabled = () => {
+          const curT = Number(store.getVal(s.eqBands[sel.idx].tP, 11));
+          if (curT === 11) {
+            setEqBandField(sel.idx, "tP", sel.meta.activeType);
+            if (btnBandTog) {
+              btnBandTog.classList.add("active");
+              btnBandTog.textContent = "BAND ON";
+            }
+          }
+        };
+
+        btnBandTog?.addEventListener("click", () => {
+          const curOn = Number(store.getVal(s.eqBands[sel.idx].tP, 11)) !== 11;
+          setEqBandField(sel.idx, "tP", curOn ? 11 : sel.meta.activeType);
           renderRoomEq();
         });
-        const slF = rtEqControls.querySelector("#rtBandFreq");
-        const slG = rtEqControls.querySelector("#rtBandGain");
-        const slQ = rtEqControls.querySelector("#rtBandQ");
         slF?.addEventListener("input", () => {
           const hz = Math.round(20 * Math.pow(1000, Number(slF.value) / 1000));
-          if (sel.t === 11) setEqBandField(sel.idx, "tP", sel.meta.activeType);
+          ensureBandEnabled();
           setEqBandField(sel.idx, "fP", hz);
-          renderRoomEq();
+          if (valF) valF.textContent = hz >= 1000 ? `${(hz / 1000).toFixed(2)}k` : `${hz}Hz`;
+          drawRtEqGraphOnly();
         });
         slG?.addEventListener("input", () => {
           const db = Number(slG.value);
-          if (sel.t === 11) setEqBandField(sel.idx, "tP", sel.meta.activeType);
+          ensureBandEnabled();
           setEqBandField(sel.idx, "gP", db);
-          renderRoomEq();
+          if (valG) valG.textContent = `${db >= 0 ? "+" : ""}${db.toFixed(1)} dB`;
+          drawRtEqGraphOnly();
         });
         slQ?.addEventListener("input", () => {
           const q = Number(slQ.value);
-          if (sel.t === 11) setEqBandField(sel.idx, "tP", sel.meta.activeType);
+          ensureBandEnabled();
           setEqBandField(sel.idx, "qP", q);
-          renderRoomEq();
+          if (valQ) valQ.textContent = q.toFixed(2);
+          drawRtEqGraphOnly();
         });
       }
     }
@@ -1097,6 +1123,8 @@ export function createMonitoringView(container, store) {
           if (b.qP) store.setParam(b.qP, meta.defQ);
         });
       }
+      selectedProfileId = "flat";
+      renderProfileCards();
       renderRoomEq();
     });
 
