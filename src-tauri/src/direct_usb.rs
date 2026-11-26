@@ -1733,8 +1733,20 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
     let mono = hw_get_u8(dev, ENT_MONITOR, 0x00, 0, 0) as i32;
     let mid_side = hw_get_u8(dev, ENT_MONITOR, 0x01, 0, 0) as i32;
     let talkback = hw_get_u8(dev, ENT_MONITOR, 0x05, 0, 0) as i32;
-    let dim_atten = hw_get_q88(dev, ENT_MONITOR, 0x04, 0, settings.dim_atten);
-    let ref_vol = hw_get_q88(dev, ENT_MONITOR, 0x13, 0, settings.ref_vol);
+    let raw_dim_atten = hw_get_q88(dev, ENT_MONITOR, 0x04, 0, settings.dim_atten);
+    let dim_atten = if raw_dim_atten <= -127.5 && settings.dim_atten > -127.5 {
+        let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0400, &db_to_q88(settings.dim_atten));
+        settings.dim_atten
+    } else {
+        raw_dim_atten
+    };
+    let raw_ref_vol = hw_get_q88(dev, ENT_MONITOR, 0x13, 0, settings.ref_vol);
+    let ref_vol = if raw_ref_vol <= -127.5 && settings.ref_vol > -127.5 {
+        let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x1300, &db_to_q88(settings.ref_vol));
+        settings.ref_vol
+    } else {
+        raw_ref_vol
+    };
     let alt_trim = hw_get_q88(dev, ENT_MONITOR, 0x08, 0, 0.0);
     let speaker_sel = hw_get_u8(dev, ENT_MONITOR, 0x07, 0, 0) as i32;
 
