@@ -5,7 +5,7 @@ A fast, lightweight, open-source replacement mixer, DSP studio console, and floa
 > **Supported Hardware:** Designed exclusively for the 4 **Audient iD MK3** audio interfaces: **iD1**, **iD2**, **iD2+**, and **iD4+**. *(Legacy MK1/MK2 models such as iD4, iD14, iD24, and iD44 are not targeted.)*
 
 <p align="center">
-  <img src="docs/preview-themes.png" alt="iD Interface — 9 Studio Themes" width="100%" />
+  <img src="docs/preview-console.png" alt="iD Interface — Studio Console &amp; DSP Mixer" width="100%" />
 </p>
 
 <p align="center">
