@@ -1139,7 +1139,7 @@ html.is-snapped body {
 }
 
 :root[data-theme="daylight"] .mac-traffic-lights.is-unfocused:not(.is-hovered) .mac-tl,
-:root[data-theme="liquidglass"][data-color-scheme="light"] .mac-traffic-lights.is-unfocused:not(.is-hovered) .mac-tl {
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mac-traffic-lights.is-unfocused:not(.is-hovered) .mac-tl {
   background-color: rgba(0, 0, 0, 0.14);
   box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.1);
 }

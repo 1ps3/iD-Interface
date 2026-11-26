@@ -200,12 +200,20 @@ const btnMacMin = document.getElementById("btnMacMin");
 const btnMacMax = document.getElementById("btnMacMax");
 if (isMacOS) document.documentElement.dataset.platform = "macos";
 
-// Explicit pointer & focus tracking so macOS WebKit never leaves traffic-light glyphs stuck hovered
+// Bulletproof hover & focus tracking via bounding-box hit test so macOS WKWebView
+// always shows traffic-light glyphs on hover and never leaves them stuck.
 if (macTrafficLights) {
   const clearMacTlHover = () => macTrafficLights.classList.remove("is-hovered");
-  macTrafficLights.addEventListener("pointerenter", () => macTrafficLights.classList.add("is-hovered"));
-  macTrafficLights.addEventListener("pointerleave", clearMacTlHover);
-  macTrafficLights.addEventListener("pointercancel", clearMacTlHover);
+  const syncMacTlHover = (x, y) => {
+    const r = macTrafficLights.getBoundingClientRect();
+    const inside = r.width > 0 && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    macTrafficLights.classList.toggle("is-hovered", inside);
+  };
+  macTrafficLights.addEventListener("mousedown", (e) => e.stopPropagation());
+  macTrafficLights.addEventListener("mouseenter", () => macTrafficLights.classList.add("is-hovered"));
+  macTrafficLights.addEventListener("mouseleave", clearMacTlHover);
+  document.addEventListener("mousemove", (e) => syncMacTlHover(e.clientX, e.clientY), { passive: true });
+  document.addEventListener("mouseleave", clearMacTlHover);
   window.addEventListener("blur", () => {
     clearMacTlHover();
     macTrafficLights.classList.add("is-unfocused");
@@ -213,7 +221,6 @@ if (macTrafficLights) {
   window.addEventListener("focus", () => {
     macTrafficLights.classList.remove("is-unfocused");
   });
-  document.addEventListener("pointerleave", clearMacTlHover);
 }
 
 const handleMinimize = () => {
