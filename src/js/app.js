@@ -195,11 +195,15 @@ async function syncMaximizeBtn() {
   }
 }
 
-document.getElementById("btnMin").addEventListener("click", () => {
-  invoke("minimize_window").catch(() => getCurrentWindow().minimize());
-});
+const btnMacMin = document.getElementById("btnMacMin");
+const btnMacMax = document.getElementById("btnMacMax");
+if (isMacOS) document.documentElement.dataset.platform = "macos";
 
-btnMax.addEventListener("click", async () => {
+const handleMinimize = () => {
+  invoke("minimize_window").catch(() => getCurrentWindow().minimize());
+};
+
+const handleMaximize = async () => {
   try {
     const state = await invoke("toggle_maximize_window");
     applyWindowFrameState(state);
@@ -212,7 +216,12 @@ btnMax.addEventListener("click", async () => {
       snapped: false,
     });
   }
-});
+};
+
+document.getElementById("btnMin").addEventListener("click", handleMinimize);
+btnMacMin?.addEventListener("click", handleMinimize);
+btnMax.addEventListener("click", handleMaximize);
+btnMacMax?.addEventListener("click", handleMaximize);
 
 window.__TAURI__?.event?.listen("window-state-changed", (e) => {
   if (e?.payload) applyWindowFrameState(e.payload);
@@ -245,7 +254,7 @@ function getSavedCloseAction() {
 function syncCloseBtnTitles(action) {
   const hideLabel = isMacOS ? "Minimize to Menu Bar" : "Minimize to Tray";
   const title = action === "tray" ? hideLabel : action === "quit" ? "Quit App" : "Close";
-  for (const id of ["btnCloseCompact", "btnCloseFull"]) {
+  for (const id of ["btnCloseCompact", "btnCloseFull", "btnMacClose"]) {
     const el = document.getElementById(id);
     if (el) el.title = title;
   }
@@ -337,8 +346,8 @@ function handleCloseButton() {
   }
 }
 
-for (const id of ["btnCloseCompact", "btnCloseFull"]) {
-  document.getElementById(id).addEventListener("click", (e) => {
+for (const id of ["btnCloseCompact", "btnCloseFull", "btnMacClose"]) {
+  document.getElementById(id)?.addEventListener("click", (e) => {
     e.stopPropagation();
     handleCloseButton();
   });

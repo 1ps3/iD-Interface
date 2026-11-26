@@ -1600,7 +1600,9 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
         let eq_byps_p = [eq_p.as_slice(), &[0]].concat();
         path_to_hw.insert(eq_byps_p.clone(), HwBinding::EqBypass { ch });
 
-        let (apf_t, apf_f, _, _) = hw_get_eq_band(dev, 0x07, ch, 11, 90.0, 0.5);
+        let (raw_apf_t, apf_f, _, _) = hw_get_eq_band(dev, 0x07, ch, 11, 90.0, 0.5);
+        // Hardware returns 0 / 0xFFFF / 11 when V-Phase (APF) is bypassed on boot; only 13/14 means active.
+        let apf_t = if raw_apf_t == 13 || raw_apf_t == 14 { 13 } else { 11 };
         let apf_deg = if apf_t == 11 {
             90.0
         } else {

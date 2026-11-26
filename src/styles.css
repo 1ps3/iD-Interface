@@ -1050,6 +1050,64 @@ html.is-snapped body {
   flex-shrink: 0;
 }
 
+.mac-traffic-lights {
+  display: none;
+  align-items: center;
+  gap: 7px;
+  margin-right: 4px;
+  padding: 2px 2px;
+}
+
+:root[data-platform="macos"] .mac-traffic-lights {
+  display: inline-flex;
+}
+
+:root[data-platform="macos"] #btnMin,
+:root[data-platform="macos"] #btnMax,
+:root[data-platform="macos"] #btnCloseFull {
+  display: none;
+}
+
+.mac-tl {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 0.5px solid rgba(0, 0, 0, 0.22);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.65);
+  transition: filter 120ms ease, transform 80ms ease;
+}
+
+.mac-tl svg {
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+
+.mac-traffic-lights:hover .mac-tl svg {
+  opacity: 1;
+}
+
+.mac-tl:active {
+  filter: brightness(0.84);
+  transform: scale(0.95);
+}
+
+.mac-tl-close {
+  background: #ff5f57;
+}
+
+.mac-tl-min {
+  background: #febc2e;
+}
+
+.mac-tl-max {
+  background: #28c840;
+}
+
 .brand-mark {
   font-size: 11.5px;
   font-weight: 700;
