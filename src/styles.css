@@ -6381,7 +6381,8 @@ html.is-snapped body {
 :root[data-light-ui="true"] .comp-transfer-oled,
 :root[data-light-ui="true"] .preamp-comp-gr,
 :root[data-light-ui="true"] .comp-gr-oled,
-:root[data-light-ui="true"] .eq-oled-wrap {
+:root[data-light-ui="true"] .eq-oled-wrap,
+:root[data-light-ui="true"] .rt-eq-oled {
   background: #14161c;
   border-color: #c2c8d5;
 }
@@ -6963,7 +6964,8 @@ html.tray-menu-page body {
 :root[data-theme="liquidglass"] .setting-pill-card,
 :root[data-theme="liquidglass"] .preamp-card,
 :root[data-theme="liquidglass"] .routing-card,
-:root[data-theme="liquidglass"] .room-card {
+:root[data-theme="liquidglass"] .room-card,
+:root[data-theme="liquidglass"] .rt-eq-panel {
   border-radius: 14px;
   background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.015) 100%);
   -webkit-backdrop-filter: blur(22px) saturate(175%);
@@ -7267,6 +7269,7 @@ html.tray-menu-page body {
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .preamp-card,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .routing-card,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .room-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .rt-eq-panel,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .dsp-card,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .mon-meter-bay,
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .phys-out-item {
