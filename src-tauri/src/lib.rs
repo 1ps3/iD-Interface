@@ -632,29 +632,6 @@ impl AdmStore {
         (cmds, scene_toggle)
     }
 
-    fn apply_custom_fn_follower(&mut self, path: &[usize], value: &JuceVar) -> Vec<(Vec<usize>, JuceVar)> {
-        let Some(v) = value.as_i64() else {
-            return Vec::new();
-        };
-        let bit = if v != 0 { 1 } else { 0 };
-        let is = |p: &Option<Vec<usize>>| p.as_deref() == Some(path);
-        let target = match self.custom_fn_mode {
-            CustomFnMode::MuteMics if is(&self.mic1_mute_path) => self.mic2_mute_path.clone().map(|p| (p, bit)),
-            CustomFnMode::MuteHeadphones if is(&self.hp1_mute_path) => self.hp1_mute_path.clone().map(|p| (p, bit)),
-            CustomFnMode::SwapSpkHp if is(&self.main_mute_path) => self.hp1_mute_path.clone().map(|p| (p, 1 - bit)),
-            _ => None,
-        };
-        let Some((tp, val)) = target else {
-            return Vec::new();
-        };
-        if let Some(r) = self.root.as_mut() {
-            if let Some(n) = r.get_path_mut(&tp) {
-                n.props.insert("value".into(), JuceVar::Int(val));
-            }
-        }
-        vec![(tp, JuceVar::Int(val))]
-    }
-
     fn apply_standard_fn_trigger(&mut self, active: bool) -> Vec<(Vec<usize>, JuceVar)> {
         let mut cmds: Vec<(Vec<usize>, JuceVar)> = Vec::new();
         let bit = if active { 1 } else { 0 };
@@ -1146,19 +1123,13 @@ async fn get_custom_fn_mode(state: State<'_, AppState>) -> Result<CustomFnMode, 
 }
 
 /// Hardware Fn binding (`ENT_MONITOR, cs=0x0D` = `[cs, ch, entity, 0]`) for each Custom Studio Action.
-/// Single-register actions bind straight to their target so the firmware toggles it instantly and
-/// lights the Fn LED; multi-target actions anchor on one register and mirror the rest in software;
-/// actions with no register equivalent use the neutral `FnActive` flag.
+/// Verified on iD2 MK3 hardware: binding `cs=0x0D` to `[0x0E, 0x00, 0x04, 0x00]` (`FnActive`)
+/// lights up the physical Fn button LED bright white on toggle with zero side effects on RoomTune
+/// or any audio/monitor DSP, and fires `apply_custom_fn_trigger` in ~16-30 ms.
 fn custom_fn_binding(mode: CustomFnMode) -> Option<[u8; 4]> {
     match mode {
         CustomFnMode::None => None,
-        CustomFnMode::MuteMic1 | CustomFnMode::MuteMics => Some([0x01, 0x00, 0x01, 0x00]), // Mic 1 Mute
-        CustomFnMode::MuteMic2 => Some([0x01, 0x01, 0x01, 0x00]),                         // Mic 2 Mute
-        CustomFnMode::MuteHeadphones => Some([0x02, 0x04, 0x02, 0x00]),                   // HP1 Mute
-        CustomFnMode::GlobalMute => Some([0x0A, 0x00, 0x00, 0x00]),                       // Global Mute
-        CustomFnMode::MidSide => Some([0x01, 0x00, 0x04, 0x00]),                          // Monitor Mid/Side
-        CustomFnMode::SwapSpkHp => Some([0x02, 0x00, 0x04, 0x00]),                        // Main Mute (+HP mirror)
-        _ => Some([0x0E, 0x00, 0x04, 0x00]),                                              // FnActive
+        _ => Some([0x0E, 0x00, 0x04, 0x00]),
     }
 }
 
@@ -3198,13 +3169,6 @@ async fn run_direct_usb_session(
                                         }
                                     }
                                 }
-                            }
-
-                            // Hardware-bound Custom Studio Actions: mirror companion targets
-                            // (e.g. Mic 2 for "Mute Mics", HP1 for "Speakers / Headphones Swap")
-                            if st.custom_fn_mode != CustomFnMode::None {
-                                let cmds = st.apply_custom_fn_follower(&path, &value);
-                                auto_cmds.extend(cmds);
                             }
 
                             let hp1 = if path == st.hp1_vol_path {

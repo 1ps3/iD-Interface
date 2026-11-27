@@ -5,18 +5,10 @@
 #include <IOKit/IOKitLib.h>
 #include <IOKit/usb/IOUSBLib.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
 #define AUDIENT_VID 0x2708
-
-static void usb_log(const char *msg, int code) {
-    FILE *f = fopen("/tmp/id-interface-usb.log", "a");
-    if (!f) return;
-    fprintf(f, "[pid=%d] %s (0x%08x)\n", (int)getpid(), msg, (unsigned int)code);
-    fclose(f);
-}
 
 static int is_supported_mk3_pid(int pid) {
     return pid == 0x0014 || pid == 0x0015 || pid == 0x0016 || pid == 0x0018;
@@ -68,10 +60,8 @@ static int probe_device_awake(IOUSBDeviceInterface182 **dev) {
     req.completionTimeout = 500;
     kern_return_t kr = (*dev)->DeviceRequestTO(dev, &req);
     if (kr == KERN_SUCCESS) {
-        usb_log("probe 0x0200 OK", 0);
         return 1;
     }
-    usb_log("probe 0x0200 failed", (int)kr);
 
     /* If EP0 returned kIOReturnNotResponding (0xe00002ed), send a benign USB2 GET_STATUS to resync EP0 */
     if ((unsigned int)kr == 0xe00002edU) {
@@ -86,12 +76,10 @@ static int probe_device_awake(IOUSBDeviceInterface182 **dev) {
         st_req.pData = (void *)st;
         st_req.noDataTimeout = 500;
         st_req.completionTimeout = 500;
-        kern_return_t skr = (*dev)->DeviceRequestTO(dev, &st_req);
-        usb_log("ep0 GET_STATUS resync", (int)skr);
+        (void)(*dev)->DeviceRequestTO(dev, &st_req);
         usleep(50000);
         kr = (*dev)->DeviceRequestTO(dev, &req);
         if (kr == KERN_SUCCESS) {
-            usb_log("probe 0x0200 OK after resync", 0);
             return 1;
         }
     }
@@ -102,10 +90,8 @@ static int probe_device_awake(IOUSBDeviceInterface182 **dev) {
     req.wLength = 2;
     kr = (*dev)->DeviceRequestTO(dev, &req);
     if (kr == KERN_SUCCESS) {
-        usb_log("probe 0x0A00 OK", 0);
         return 1;
     }
-    usb_log("probe 0x0A00 failed", (int)kr);
     return 0;
 }
 

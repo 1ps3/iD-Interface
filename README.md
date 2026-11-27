@@ -27,7 +27,7 @@ Grab the latest build from **[Releases](https://github.com/1ps3/iD-Interface/rel
 | **Linux (AppImage)** | `iD Interface_x.y.z_amd64.AppImage` | Portable — install [99-audient-id.rules](packaging/linux/99-audient-id.rules) for non-root USB |
 
 * **Updates:** Built-in **1-click self-updater** (Windows & macOS) — checks GitHub Releases on launch, shows an **`UPDATE vX.Y.Z`** badge in the top bar (or **Settings → CHECK**), and downloads, installs, and restarts automatically. On Linux, it opens the latest `.AppImage` / `.deb` release download.
-* **macOS first launch:** Builds are not notarized yet, so run `xattr -cr "/Applications/iD Interface.app"` once (or right-click → Open).
+* **macOS first launch:** Builds are not notarized yet, so run `xattr -dr com.apple.quarantine "/Applications/iD Interface.app"` once (or right-click → Open).
 * **Linux AppImage USB permissions:** Copy [packaging/linux/99-audient-id.rules](packaging/linux/99-audient-id.rules) to `/etc/udev/rules.d/` and run `sudo udevadm control --reload-rules && sudo udevadm trigger` (the `.deb` package does this automatically).
 * **Windows SmartScreen:** Builds are not code-signed yet — click **More info → Run anyway**.
 
@@ -46,18 +46,18 @@ Collapse the full console into a resizable, always-on-top hardware faceplate for
 ## What's New & Why iD Interface vs. Audient iD Control?
 
 ### Beyond Official iD Control
-* **Zero Background Bloat (Windows, macOS & Linux):** Talks directly to your **iD1 / iD2 / iD2+ / iD4+** over **Direct USB** (TUSBAudio on Windows, native IOKit alongside CoreAudio on macOS, native `usbdevfs` alongside ALSA/PipeWire/JACK on Linux) — no `AudientDeviceManager` or Apple Bonjour required, and full **Linux** support that Audient never shipped. *(You can still switch to ADM mode anytime in Settings on Windows/macOS.)*
-* **Remembers Sample Rate, Buffer Size & Clock Source:** Automatically saves your chosen **Sample Rate**, **ASIO Buffer Size**, and **Clock Source** and restores them to your interface on app launch or USB replug — no more resetting every time you reconnect.
-* **Compact Floating Controller:** Collapse the full mixer into a sleek, always-on-top mini faceplate (`C`) for instant monitor/headphone volume, preamp gain, 48V, mute, dim, HPF, and live metering.
-* **Rebindable Hardware Function Button (Direct USB):** Map the physical **Fn** button on your iD MK3 to **Mute Mics (1 + 2)**, **Mute Mic 1**, **Mute Mic 2**, **Mute Headphones**, **Speakers / Headphones Swap**, **Mid / Side Check**, **Reference Level Recall**, **Global Mute (All Outputs)**, **Bypass Input DSP (A/B)**, or **Toggle Scene 1–4** (plus all standard Audient hardware functions).
-* **4 Instant Studio Scenes + Auto-Saving Working Scene:** Recall up to 4 full desk setups (`Alt+1–4` / `⌥1–4`), click an active scene to toggle back to your continuously saved live mix, and commit your desk directly to **onboard hardware flash** (`SAVE` / `RELOAD`, plus auto-save on close). Only changed parameters are written, so swaps are near-instant.
-* **9 Studio Themes + macOS Liquid Glass:** Pure Monochrome, Tactile Carbon, Warm Vintage, Brushed Gunmetal, Studio Daylight, Powdercoat Slate, Audient iD MK3, Prism Studio, Stealth Obsidian — plus an adaptive **Liquid Glass** theme on macOS that auto-syncs with system Light/Dark mode.
-* **True Desktop Integration:** Native Windows DWM window frame (Aero Snap, `Win+↑/↓`, `F11` fullscreen), macOS top Menu Bar mode (hides cleanly from the Dock), theme-matched right-click tray menu, first-close tray/quit prompt, persistent window & compact positions, and a **1-click self-updater**.
+* **Zero Background Bloat + 60 Hz Direct USB (Windows, macOS & Linux):** Talks directly to your **iD1 / iD2 / iD2+ / iD4+** over **Direct USB** (TUSBAudio on Windows, native IOKit alongside CoreAudio on macOS, native `usbdevfs` alongside ALSA/PipeWire/JACK on Linux) with **60 Hz hardware metering** and non-blocking front-panel sync — no `AudientDeviceManager` or Apple Bonjour required, and full **Linux** support that Audient never shipped. *(You can still switch to ADM mode anytime in Settings on Windows/macOS.)*
+* **Hot-Plug Session Restore & Sample-Rate Guard:** Automatically saves and restores your **Sample Rate** (with a post-connect guard so OS audio re-enumeration can't silently reset it), **ASIO Buffer Size**, **Clock Source**, and your full live mix/DSP session if you unplug and replug — while never touching **48V phantom power** or master volumes on reconnect.
+* **Compact Floating Controller:** Collapse the full mixer into a sleek, always-on-top mini faceplate (`C`) with optional live audio waveform history, instant monitor/headphone volume, preamp gain, 48V, mute, dim, HPF, and live metering.
+* **Rebindable Hardware Function Button with Native LED Support (Direct USB):** Directly programs the iD MK3's hardware Function button register (`0x04/0x0D`) — Standard modes (**Dim**, **Alt Speaker**, **Talkback**, **Mono**, **Polarity**, **Main Mute**) run natively inside the iD firmware with zero latency even when the app is closed, while **13 Custom Studio Actions** (**Mute Mics 1+2**, **Mute Mic 1**, **Mute Mic 2**, **Mute Headphones**, **Speakers / Headphones Swap**, **Mid / Side Check**, **Reference Level Recall**, **Global Mute**, **Bypass Input DSP A/B**, and **Toggle Scene 1–4**) light up the physical white Fn LED cleanly via the firmware's standalone `0x0E` flag with zero side effects on RoomTune or audio.
+* **4 Instant Studio Scenes + Onboard Hardware Flash:** Recall up to 4 full desk setups (`Alt+1–4` / `⌥1–4`), click an active scene to toggle back to your continuously saved live working mix, and commit your running desk straight to **onboard hardware flash** (**Onboard Memory → SAVE / RELOAD**) so your iD boots into your exact mix even without the app open.
+* **Native macOS Liquid Glass + 9 Studio Themes:** Authentic macOS **Liquid Glass** theme (auto-synced with macOS Light/Dark mode, system accent color, SF Pro typography, inset grouped Settings, and native monochrome template menu bar icon), plus 9 studio themes: Pure Monochrome, Tactile Carbon, Warm Vintage, Brushed Gunmetal, Studio Daylight, Powdercoat Slate, Audient iD MK3, Prism Studio, and Stealth Obsidian.
+* **True Desktop Integration:** Native Windows DWM window frame (Aero Snap, `Win+↑/↓`, `F11` fullscreen), macOS top Menu Bar mode with adaptive monochrome template icon (hides cleanly from the Dock), theme-matched right-click tray menu, first-close tray/quit prompt, persistent window & compact positions, and a **1-click self-updater**.
 
 ### Full Studio Console & Hardware DSP
-* **4-Bus Mixer (`Main Mix`, `Mix A`, `Mix B`, `Reverb`)** with Dual Peak + RMS metering, custom channel scribble strips, and instant `STEREO`/`MONO` pairing.
-* **Zero-Scroll Channel Strip & DSP Deck:** Preamp Gain, 48V, Mute, V-HPF, V-Phase, Tone (`Glow` / `HMX` / `Lift` / `Orbit`), 4-band Parametric EQ with live SVG response curve, Compressor with hardware GR meter and discrete `2:1 / 4:1 / 8:1 / 16:1` ratios, DSP Order, Record FX, and Reverb Send — all unlocked up to **96 kHz** and cleanly faded until engaged.
-* **Preamps + SmartGain**, **3D RoomTune Monitoring Soundstage** (hardware-verified Bypass, Profile Trim, and Speaker L/R Trim & Delay), and **Output & Loopback Routing Matrix** (with Virtual Thru loud-output guard).
+* **4-Bus Mixer (`Main Mix`, `Mix A`, `Mix B`, `Reverb`)** with **60 Hz Dual Peak + RMS metering** (fast translucent peak + smoothed RMS loudness + 900 ms peak-hold ticks), custom channel scribble strips, and smooth `STEREO`/`MONO` pairing.
+* **Zero-Scroll Channel Strip & DSP Deck:** Preamp Gain, 48V, Mute, V-HPF, V-Phase, Tone (`Glow` / `HMX` / `Lift` / `Orbit`), 4-band Parametric EQ with live SVG response curve, Compressor with hardware GR meter and discrete `2:1 / 4:1 / 8:1 / 16:1` ratios, DSP Order, Record FX, and zero-latency monitoring Reverb Send — all unlocked up to **96 kHz** with hardware register validation.
+* **Preamps + SmartGain**, **3D RoomTune Monitoring Soundstage** (hardware-verified Bypass, Profile Trim, 6-band per-speaker Room EQ, and Speaker L/R Trim & Delay), and **Output & Loopback Routing Matrix** (with Virtual Thru loud-output guard).
 
 ---
 
@@ -92,7 +92,7 @@ chmod +x build-macos.sh
 ./build-macos.sh --universal
 ```
 Outputs a Universal `.app` and `.dmg` in `src-tauri/target/universal-apple-darwin/release/bundle/`.
-*(First launch on unsigned macOS builds: `xattr -cr "/Applications/iD Interface.app"`)*
+*(First launch on unsigned macOS builds: `xattr -dr com.apple.quarantine "/Applications/iD Interface.app"`)*
 
 ### Linux (`.deb` & `.AppImage`)
 ```bash
