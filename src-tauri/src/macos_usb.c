@@ -72,6 +72,30 @@ static int probe_device_awake(IOUSBDeviceInterface182 **dev) {
         return 1;
     }
     usb_log("probe 0x0200 failed", (int)kr);
+
+    /* If EP0 returned kIOReturnNotResponding (0xe00002ed), send a benign USB2 GET_STATUS to resync EP0 */
+    if ((unsigned int)kr == 0xe00002edU) {
+        uint8_t st[2] = {0, 0};
+        IOUSBDevRequestTO st_req;
+        memset(&st_req, 0, sizeof(st_req));
+        st_req.bmRequestType = 0x80; /* IN | Standard | Device */
+        st_req.bRequest = 0x00;      /* GET_STATUS */
+        st_req.wValue = 0;
+        st_req.wIndex = 0;
+        st_req.wLength = 2;
+        st_req.pData = (void *)st;
+        st_req.noDataTimeout = 500;
+        st_req.completionTimeout = 500;
+        kern_return_t skr = (*dev)->DeviceRequestTO(dev, &st_req);
+        usb_log("ep0 GET_STATUS resync", (int)skr);
+        usleep(50000);
+        kr = (*dev)->DeviceRequestTO(dev, &req);
+        if (kr == KERN_SUCCESS) {
+            usb_log("probe 0x0200 OK after resync", 0);
+            return 1;
+        }
+    }
+
     /* Fallback probe: Main Monitor Vol (ENT_MONITOR 0x04, cs 0x0A) */
     req.wValue = 0x0A00;
     req.wIndex = 0x0400;

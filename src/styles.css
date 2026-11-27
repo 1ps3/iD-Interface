@@ -2260,6 +2260,8 @@ html.is-snapped body {
 }
 
 .pair-head-row .strip-nums {
+  transform: translateX(0);
+  will-change: transform;
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -2331,6 +2333,8 @@ html.is-snapped body {
 }
 
 .pair-pan-bridge .pan-slot {
+  transform: translateX(0);
+  will-change: transform;
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -2391,6 +2395,8 @@ html.is-snapped body {
 
 .pair-ms-area .strip-ms-row {
   margin-bottom: 0;
+  transform: translateX(0);
+  will-change: transform, opacity;
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 190ms ease;
 }
 
@@ -7440,73 +7446,79 @@ html.tray-menu-page body {
     0 6px 18px rgba(0, 0, 0, 0.22);
 }
 
-/* Apple Music Tahoe Liquid Glass capsule topbar pills & navigation tabs */
+/* Finder / Apple Music Tahoe Liquid Glass capsule topbar pills & navigation tabs */
 :root[data-theme="liquidglass"] .brand-model,
 :root[data-theme="liquidglass"] .telemetry-pill {
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.24), 0 2px 8px rgba(0, 0, 0, 0.22);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  backdrop-filter: blur(18px) saturate(160%);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.25),
+    0 3px 10px rgba(0, 0, 0, 0.28);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  backdrop-filter: blur(22px) saturate(170%);
   transition: background 150ms ease, border-color 150ms ease, color 150ms ease, transform 100ms ease;
 }
 
 :root[data-theme="liquidglass"] .telemetry-btn:hover {
-  background: rgba(255, 255, 255, 0.13);
-  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.26);
   color: #ffffff;
 }
 
 :root[data-theme="liquidglass"] .top-nav-tabs {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.17);
   border-radius: 999px;
   padding: 3px;
   gap: 2px;
-  -webkit-backdrop-filter: blur(22px) saturate(170%);
-  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
   box-shadow:
-    inset 0 0.5px 0 rgba(255, 255, 255, 0.24),
-    inset 0 -0.5px 0 rgba(255, 255, 255, 0.05),
-    0 4px 16px rgba(0, 0, 0, 0.28);
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.25),
+    0 4px 14px rgba(0, 0, 0, 0.32);
 }
 
 :root[data-theme="liquidglass"] .top-nav-tabs .nav-item {
   border-radius: 999px;
   letter-spacing: 0.25px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.68);
+  color: rgba(255, 255, 255, 0.72);
   transition: background 160ms cubic-bezier(0.22, 1, 0.36, 1), color 140ms ease, box-shadow 160ms ease;
 }
 
 :root[data-theme="liquidglass"] .top-nav-tabs .nav-item:hover:not(.active) {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
 }
 
 :root[data-theme="liquidglass"] .top-nav-tabs .nav-item.active {
-  background: rgba(255, 255, 255, 0.21);
+  background: rgba(255, 255, 255, 0.24);
   color: #ffffff;
   font-weight: 600;
   border-color: transparent;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
     inset 0 -0.5px 0 rgba(255, 255, 255, 0.08),
-    0 1px 6px rgba(0, 0, 0, 0.26);
+    0 1px 6px rgba(0, 0, 0, 0.28);
 }
 
-/* Scene bar as matching Liquid Glass capsule */
+/* Scene bar as matching Finder Liquid Glass capsule with preserved scene colors */
 :root[data-theme="liquidglass"] .scene-bar {
   border-radius: 999px;
   padding: 2.5px 4px 2.5px 10px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.22), 0 2px 10px rgba(0, 0, 0, 0.22);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.25),
+    0 3px 10px rgba(0, 0, 0, 0.28);
 }
 
-:root[data-theme="liquidglass"] .scene-slot-btn,
-:root[data-theme="liquidglass"] .scene-save-btn {
+:root[data-theme="liquidglass"] .scene-slot-btn:not(.active),
+:root[data-theme="liquidglass"] .scene-save-btn:not(.armed) {
   border-radius: 999px;
   background: transparent;
   border-color: transparent;
@@ -7514,14 +7526,21 @@ html.tray-menu-page body {
 
 :root[data-theme="liquidglass"] .scene-slot-btn:hover:not(.active),
 :root[data-theme="liquidglass"] .scene-save-btn:hover:not(.armed) {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 :root[data-theme="liquidglass"] .scene-slot-btn.active {
-  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--scene-col, #a855f7) 34%, rgba(255, 255, 255, 0.14));
   color: #ffffff;
-  border-color: transparent;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34), 0 1px 4px rgba(0, 0, 0, 0.24);
+  border: 1px solid color-mix(in srgb, var(--scene-col, #a855f7) 72%, rgba(255, 255, 255, 0.3));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 1px 6px color-mix(in srgb, var(--scene-col, #a855f7) 35%, transparent);
+}
+
+:root[data-theme="liquidglass"] .scene-slot-btn.active::after {
+  background: #ffffff;
 }
 
 /* Liquid Glass buttons, segmented capsules, Tone/Orbit pills & selects */
@@ -7651,10 +7670,10 @@ html.tray-menu-page body {
   box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.2), 0 2px 10px rgba(0, 0, 0, 0.22);
 }
 
-:root[data-theme="liquidglass"] .seg-btn,
-:root[data-theme="liquidglass"] .bus-tab,
-:root[data-theme="liquidglass"] .tone-btn,
-:root[data-theme="liquidglass"] .orbit-btn {
+:root[data-theme="liquidglass"] .seg-btn:not(.active),
+:root[data-theme="liquidglass"] .bus-tab:not(.active),
+:root[data-theme="liquidglass"] .tone-btn:not(.active),
+:root[data-theme="liquidglass"] .orbit-btn:not(.active) {
   border-radius: 999px;
   background: transparent;
   background-image: none;
@@ -7662,6 +7681,49 @@ html.tray-menu-page body {
   box-shadow: none;
   color: rgba(255, 255, 255, 0.68);
   transition: background 150ms ease, color 140ms ease, box-shadow 150ms ease;
+}
+
+:root[data-theme="liquidglass"] .seg-btn,
+:root[data-theme="liquidglass"] .bus-tab,
+:root[data-theme="liquidglass"] .tone-btn,
+:root[data-theme="liquidglass"] .orbit-btn {
+  border-radius: 999px;
+}
+
+:root[data-theme="liquidglass"] .tone-btn.tone-glow.active {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.85) 0%, rgba(96, 165, 250, 0.85) 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+:root[data-theme="liquidglass"] .tone-btn.tone-hmx.active {
+  background: rgba(168, 85, 247, 0.78);
+  color: #ffffff;
+  border-color: rgba(216, 180, 254, 0.45);
+}
+
+:root[data-theme="liquidglass"] .tone-btn.tone-lift.active {
+  background: rgba(59, 130, 246, 0.78);
+  color: #ffffff;
+  border-color: rgba(147, 197, 253, 0.45);
+}
+
+:root[data-theme="liquidglass"] .orbit-btn.orbit-punch.active {
+  background: rgba(45, 212, 191, 0.28);
+  color: #5eead4;
+  border-color: rgba(45, 212, 191, 0.62);
+}
+
+:root[data-theme="liquidglass"] .orbit-btn.orbit-smooth.active {
+  background: rgba(245, 158, 11, 0.28);
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.62);
+}
+
+:root[data-theme="liquidglass"] .orbit-btn.orbit-vintage.active {
+  background: rgba(177, 138, 255, 0.28);
+  color: #d8b4fe;
+  border-color: rgba(177, 138, 255, 0.62);
 }
 
 :root[data-theme="liquidglass"] .seg-btn:hover:not(.active),
@@ -7947,6 +8009,10 @@ html.tray-menu-page body {
     0 1px 4px rgba(255, 255, 255, 0.7);
 }
 
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .top-nav-tabs .nav-item {
+  color: rgba(29, 29, 31, 0.68);
+}
+
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .top-nav-tabs .nav-item:hover:not(.active) {
   background: rgba(0, 0, 0, 0.045);
   color: #1d1d1f;
@@ -8058,10 +8124,10 @@ html.tray-menu-page body {
   box-shadow: inset 0 1px 2px rgba(18, 28, 48, 0.06);
 }
 
-:root[data-theme="liquidglass"][data-glass-scheme="light"] .seg-btn,
-:root[data-theme="liquidglass"][data-glass-scheme="light"] .bus-tab,
-:root[data-theme="liquidglass"][data-glass-scheme="light"] .tone-btn,
-:root[data-theme="liquidglass"][data-glass-scheme="light"] .orbit-btn {
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .seg-btn:not(.active),
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .bus-tab:not(.active),
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .tone-btn:not(.active),
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .orbit-btn:not(.active) {
   background: transparent;
   background-image: none;
   border-color: transparent;
@@ -8092,9 +8158,14 @@ html.tray-menu-page body {
 }
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .scene-slot-btn.active {
-  background: rgba(0, 0, 0, 0.1);
+  background: color-mix(in srgb, var(--scene-col, #a855f7) 18%, rgba(255, 255, 255, 0.8));
   color: #1d1d1f;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  border: 1px solid color-mix(in srgb, var(--scene-col, #a855f7) 58%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .scene-slot-btn.active::after {
+  background: var(--scene-col, #a855f7);
 }
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .bus-vol-inline,
@@ -8411,6 +8482,122 @@ html.tray-menu-page body {
 
 :root[data-theme="liquidglass"][data-glass-scheme="light"] ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.34);
+}
+
+/* 8. Full-App Finder / Apple Music Tahoe Glass Unification (Preamps, Monitoring, Routing, Master Dock, Modals) */
+:root[data-theme="liquidglass"] .action-btn.accent-btn {
+  background: color-mix(in srgb, var(--mac-accent, #0a84ff) 78%, rgba(255, 255, 255, 0.14));
+  color: var(--mac-accent-fg, #ffffff);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 2px 10px color-mix(in srgb, var(--mac-accent, #0a84ff) 32%, transparent);
+}
+
+:root[data-theme="liquidglass"] .action-btn.accent-btn:hover {
+  background: color-mix(in srgb, var(--mac-accent, #0a84ff) 90%, rgba(255, 255, 255, 0.18));
+  color: var(--mac-accent-fg, #ffffff);
+}
+
+:root[data-theme="liquidglass"] .sg-status-pill,
+:root[data-theme="liquidglass"] .rt-layout-badge,
+:root[data-theme="liquidglass"] .guard-badge,
+:root[data-theme="liquidglass"] .signal-rt-tag,
+:root[data-theme="liquidglass"] .rt-profile-save-btn,
+:root[data-theme="liquidglass"] .phase-tag,
+:root[data-theme="liquidglass"] .dock-wave-btn {
+  border-radius: 999px;
+}
+
+:root[data-theme="liquidglass"] .rt-elev-legend {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  backdrop-filter: blur(20px) saturate(170%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .rt-elev-legend {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(0, 0, 0, 0.09);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96), 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="liquidglass"] .rt-spk-icon {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .rt-spk-icon {
+  background: rgba(0, 0, 0, 0.09);
+  color: #1d1d1f;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="liquidglass"] .rt-profile-card.active {
+  background: color-mix(in srgb, var(--mac-accent, #0a84ff) 16%, rgba(255, 255, 255, 0.08));
+  border-color: color-mix(in srgb, var(--mac-accent, #0a84ff) 62%, rgba(255, 255, 255, 0.25));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 2px 10px color-mix(in srgb, var(--mac-accent, #0a84ff) 20%, transparent);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .rt-profile-card.active {
+  background: color-mix(in srgb, var(--mac-accent, #007aff) 10%, rgba(255, 255, 255, 0.92));
+  border-color: color-mix(in srgb, var(--mac-accent, #007aff) 55%, transparent);
+}
+
+:root[data-theme="liquidglass"] .lb-src-btn.active {
+  background: color-mix(in srgb, var(--mac-accent, #0a84ff) 22%, rgba(255, 255, 255, 0.1));
+  border-color: color-mix(in srgb, var(--mac-accent, #0a84ff) 65%, rgba(255, 255, 255, 0.25));
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .lb-src-btn.active {
+  background: color-mix(in srgb, var(--mac-accent, #007aff) 12%, rgba(255, 255, 255, 0.92));
+  border-color: color-mix(in srgb, var(--mac-accent, #007aff) 55%, transparent);
+  color: #1d1d1f;
+}
+
+:root[data-theme="liquidglass"] .eq-band-pill.active,
+:root[data-theme="liquidglass"] .preamp-eq-band-tile.active {
+  background: color-mix(in srgb, var(--band-col, #2dd4bf) 24%, rgba(255, 255, 255, 0.1));
+  border-color: color-mix(in srgb, var(--band-col, #2dd4bf) 68%, rgba(255, 255, 255, 0.22));
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .eq-band-pill.active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .preamp-eq-band-tile.active {
+  background: color-mix(in srgb, var(--band-col, #0d9488) 18%, rgba(255, 255, 255, 0.92));
+  border-color: var(--band-col, #0d9488);
+  color: #1d1d1f;
+}
+
+:root[data-theme="liquidglass"] .dock-signal-strip {
+  border-radius: 999px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .dock-signal-strip {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="liquidglass"] .dock-wave-slot {
+  border-radius: 12px;
+}
+
+:root[data-theme="liquidglass"] .modal-card,
+:root[data-theme="liquidglass"] .phase-placeholder {
+  border-radius: 18px;
 }
 
 /* =========================================================================

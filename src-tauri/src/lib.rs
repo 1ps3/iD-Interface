@@ -1120,6 +1120,17 @@ async fn set_custom_fn_mode(
 static CURRENT_WINDOW_IS_FULL: AtomicBool = AtomicBool::new(true);
 static WINDOW_LAYOUT_READY: AtomicBool = AtomicBool::new(false);
 static APP_EXITING: AtomicBool = AtomicBool::new(false);
+static USB_WORKER_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+fn wait_for_usb_worker_shutdown() {
+    APP_EXITING.store(true, Ordering::SeqCst);
+    for _ in 0..45 {
+        if !USB_WORKER_ACTIVE.load(Ordering::SeqCst) {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
 
 fn current_window_mode_str() -> &'static str {
     if CURRENT_WINDOW_IS_FULL.load(Ordering::Relaxed) {
@@ -2074,6 +2085,7 @@ async fn tray_menu_action(
                 value: JuceVar::Int(1),
             });
             tokio::time::sleep(Duration::from_millis(90)).await;
+            wait_for_usb_worker_shutdown();
             app.exit(0);
         }
         _ => {}
@@ -2148,6 +2160,7 @@ async fn quit_app(
         value: JuceVar::Int(1),
     });
     tokio::time::sleep(Duration::from_millis(90)).await;
+    wait_for_usb_worker_shutdown();
     app.exit(0);
     Ok(())
 }
@@ -2354,29 +2367,28 @@ async fn install_app_update(
         let script = format!(
             "#!/bin/sh\n\
              for i in $(seq 1 60); do kill -0 {pid} 2>/dev/null || break; sleep 0.1; done\n\
-             rm -rf '{mnt}'\n\
-             mkdir -p '{mnt}'\n\
+             rm -rf '{mnt}' '{mnt}-stage'\n\
+             mkdir -p '{mnt}' '{mnt}-stage'\n\
              hdiutil attach '{dmg}' -nobrowse -quiet -mountpoint '{mnt}' || exit 1\n\
              NEW_APP=$(find '{mnt}' -maxdepth 2 -name '*.app' | head -n 1)\n\
              if [ -n \"$NEW_APP\" ]; then\n\
-               rm -rf '{app}.new' '{app}.old'\n\
-               if ditto \"$NEW_APP\" '{app}.new' && [ -f '{app}.new/Contents/Info.plist' ]; then\n\
+               STAGE_APP='{mnt}-stage/iD Interface.app'\n\
+               rm -rf '{app}.old'\n\
+               if ditto \"$NEW_APP\" \"$STAGE_APP\" && [ -f \"$STAGE_APP/Contents/Info.plist\" ]; then\n\
                  if mv '{app}' '{app}.old'; then\n\
-                   if mv '{app}.new' '{app}'; then\n\
+                   if mv \"$STAGE_APP\" '{app}'; then\n\
                      rm -rf '{app}.old'\n\
                      xattr -cr '{app}' 2>/dev/null || true\n\
+                     touch '{app}'\n\
+                     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f '{app}' 2>/dev/null || true\n\
                    else\n\
                      mv '{app}.old' '{app}' 2>/dev/null || true\n\
                    fi\n\
-                 else\n\
-                   rm -rf '{app}.new'\n\
                  fi\n\
-               else\n\
-                 rm -rf '{app}.new'\n\
                fi\n\
              fi\n\
              hdiutil detach '{mnt}' -quiet 2>/dev/null || true\n\
-             rm -rf '{mnt}' '{dmg}'\n\
+             rm -rf '{mnt}' '{mnt}-stage' '{dmg}'\n\
              sleep 0.4\n\
              open '{app}' || open -n '{app}'\n\
              rm -f '{script}'\n",
@@ -2718,6 +2730,15 @@ async fn run_direct_usb_session(
     let worker_live_settings = live_settings.clone();
 
     let worker = std::thread::spawn(move || {
+        struct ActiveGuard;
+        impl Drop for ActiveGuard {
+            fn drop(&mut self) {
+                USB_WORKER_ACTIVE.store(false, Ordering::SeqCst);
+            }
+        }
+        USB_WORKER_ACTIVE.store(true, Ordering::SeqCst);
+        let _active_guard = ActiveGuard;
+
         let api = match TusbApi::load() {
             Ok(a) => a,
             Err(_) => {
@@ -3762,10 +3783,9 @@ pub fn run() {
                     show_main_window(app_handle);
                 }
                 tauri::RunEvent::Exit => {
-                    // Only stop the Direct USB worker on actual process Exit (never ExitRequested,
-                    // which can be cancelled and would otherwise leave the worker permanently stopped).
-                    APP_EXITING.store(true, Ordering::SeqCst);
-                    std::thread::sleep(Duration::from_millis(45));
+                    // Wait for the Direct USB worker to finish any in-flight USB control transfer
+                    // and release IOKit cleanly (prevents iD2 EP0 kIOReturnNotResponding 0xe00002ed on reopen).
+                    wait_for_usb_worker_shutdown();
                 }
                 _ => {}
             }
