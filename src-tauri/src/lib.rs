@@ -2378,7 +2378,7 @@ async fn install_app_update(
                  if mv '{app}' '{app}.old'; then\n\
                    if mv \"$STAGE_APP\" '{app}'; then\n\
                      rm -rf '{app}.old'\n\
-                     xattr -cr '{app}' 2>/dev/null || true\n\
+                     xattr -dr com.apple.quarantine '{app}' 2>/dev/null || true\n\
                      touch '{app}'\n\
                      /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f '{app}' 2>/dev/null || true\n\
                    else\n\
