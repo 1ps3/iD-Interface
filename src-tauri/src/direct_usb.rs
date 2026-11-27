@@ -317,8 +317,10 @@ pub struct DirectContext {
     pub last_watched: HashMap<HwRegKey, i32>,
     /// Round-robin cursor so front-panel fallback polling never stalls the 60 Hz meter loop
     pub panel_cursor: usize,
-    /// Whether a Custom Studio Action currently owns the hardware Function button binding
-    pub custom_fn_active: bool,
+    /// Hardware Fn binding owned by a Custom Studio Action (`None` = Standard mode)
+    pub custom_fn_binding: Option<[u8; 4]>,
+    /// Register currently bound to the physical Fn button, polled every tick for instant response
+    pub fn_watch: Option<HwRegKey>,
     /// Saved sample rate to re-assert for a few seconds after connect, so the OS audio stack
     /// (Windows / CoreAudio) re-enumerating the device can't silently override the user's choice
     pub sr_guard: Option<(u32, std::time::Instant)>,
@@ -1409,9 +1411,28 @@ pub fn fn_key_mode_to_hw_bytes(fn_mode: i32, custom_active: bool) -> [u8; 4] {
 }
 
 /// Program the iD MK3 hardware Function button binding register (`ENT_MONITOR, cs=0x0D`).
-pub fn write_fn_key_mode(dev: &TusbDevice<'_>, fn_mode: i32, custom_active: bool) {
-    let bytes = fn_key_mode_to_hw_bytes(fn_mode, custom_active);
+/// Custom Studio Actions bind straight to their real target register where possible (e.g. Mic 1
+/// Mute) so the firmware toggles it instantly and lights the Fn LED; if the firmware rejects that
+/// target, fall back to the neutral `FnActive` flag. Returns the register now bound to the button.
+pub fn write_fn_key_mode(dev: &TusbDevice<'_>, fn_mode: i32, custom: Option<[u8; 4]>) -> Option<HwRegKey> {
+    const FN_ACTIVE: [u8; 4] = [0x0E, 0x00, ENT_MONITOR, 0x00];
+    let mut bytes = custom.unwrap_or_else(|| fn_key_mode_to_hw_bytes(fn_mode, false));
     let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0D00, &bytes);
+    if custom.is_some() && bytes != FN_ACTIVE {
+        let accepted = dev
+            .vendor_in(BREQ_PARAM, ENT_MONITOR, 0x0D00, 4)
+            .map(|rb| rb.len() >= 4 && rb[..4] == bytes[..])
+            .unwrap_or(false);
+        if !accepted {
+            bytes = FN_ACTIVE;
+            let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0D00, &bytes);
+        }
+    }
+    if bytes[2] == 0xFF {
+        None
+    } else {
+        Some(HwRegKey { entity: bytes[2], cs: bytes[0], ch: bytes[1] })
+    }
 }
 
 /// Read the complete live iD MK3 state directly over USB and build the ValueTree + binding map.
@@ -1420,7 +1441,7 @@ pub fn write_fn_key_mode(dev: &TusbDevice<'_>, fn_mode: i32, custom_active: bool
 pub fn build_direct_context(
     dev: &TusbDevice<'_>,
     settings: &DirectUsbSettings,
-    custom_fn_active: bool,
+    custom_fn_binding: Option<[u8; 4]>,
 ) -> DirectContext {
     let model_name = dev.detect_model_name();
     let serial = dev
@@ -2301,7 +2322,7 @@ pub fn build_direct_context(
     // then arm the physical Function button in hardware so it works immediately
     // even after a fresh power cycle without Audient Device Manager.
     let _ = dev.vendor_out(BREQ_PARAM, ENT_SYSTEM, 0x0C00, &[1]);
-    write_fn_key_mode(dev, settings.fn_key_mode, custom_fn_active);
+    let fn_watch = write_fn_key_mode(dev, settings.fn_key_mode, custom_fn_binding);
 
     let mut ctx = DirectContext {
         tree,
@@ -2313,7 +2334,8 @@ pub fn build_direct_context(
         hw_to_path,
         last_watched: HashMap::new(),
         panel_cursor: 0,
-        custom_fn_active,
+        custom_fn_binding,
+        fn_watch,
         sr_guard: settings
             .sample_rate
             .filter(|s| *s > 0)
@@ -2738,7 +2760,7 @@ pub fn write_param_to_hardware(
         }
         HwBinding::FnKeyMode => {
             if let Some(v) = value.as_i64() {
-                write_fn_key_mode(dev, v as i32, ctx.custom_fn_active);
+                ctx.fn_watch = write_fn_key_mode(dev, v as i32, ctx.custom_fn_binding);
             }
         }
     }
@@ -2777,6 +2799,32 @@ pub fn poll_watched_front_panel(
     }
 
     let mut updates = Vec::new();
+
+    // Fast path: always poll the Fn button flag + whatever register it is bound to on every tick,
+    // so physical Fn presses register in ~30 ms instead of waiting for the round-robin sweep.
+    if !seed_only {
+        let mut prio = vec![HwRegKey { entity: ENT_MONITOR, cs: 0x0E, ch: 0 }];
+        if let Some(k) = ctx.fn_watch {
+            if !prio.contains(&k) {
+                prio.push(k);
+            }
+        }
+        for key in prio {
+            let Ok(buf) = dev.vendor_in(BREQ_PARAM, key.entity, ((key.cs as u16) << 8) | (key.ch as u16), 1) else {
+                continue;
+            };
+            let Some(&b) = buf.first() else {
+                continue;
+            };
+            let raw = b as i32;
+            if ctx.last_watched.insert(key, raw) != Some(raw) {
+                if let Some(path) = ctx.hw_to_path.get(&key) {
+                    updates.push((path.clone(), JuceVar::Int(raw)));
+                }
+            }
+        }
+    }
+
     let total_slots = regs.len() + 1; // +1 for external sample-rate check
     let slots_to_poll = if seed_only { total_slots } else { 2 };
 

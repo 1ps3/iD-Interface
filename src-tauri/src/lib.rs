@@ -632,6 +632,29 @@ impl AdmStore {
         (cmds, scene_toggle)
     }
 
+    fn apply_custom_fn_follower(&mut self, path: &[usize], value: &JuceVar) -> Vec<(Vec<usize>, JuceVar)> {
+        let Some(v) = value.as_i64() else {
+            return Vec::new();
+        };
+        let bit = if v != 0 { 1 } else { 0 };
+        let is = |p: &Option<Vec<usize>>| p.as_deref() == Some(path);
+        let target = match self.custom_fn_mode {
+            CustomFnMode::MuteMics if is(&self.mic1_mute_path) => self.mic2_mute_path.clone().map(|p| (p, bit)),
+            CustomFnMode::MuteHeadphones if is(&self.hp1_mute_path) => self.hp1_mute_path.clone().map(|p| (p, bit)),
+            CustomFnMode::SwapSpkHp if is(&self.main_mute_path) => self.hp1_mute_path.clone().map(|p| (p, 1 - bit)),
+            _ => None,
+        };
+        let Some((tp, val)) = target else {
+            return Vec::new();
+        };
+        if let Some(r) = self.root.as_mut() {
+            if let Some(n) = r.get_path_mut(&tp) {
+                n.props.insert("value".into(), JuceVar::Int(val));
+            }
+        }
+        vec![(tp, JuceVar::Int(val))]
+    }
+
     fn apply_standard_fn_trigger(&mut self, active: bool) -> Vec<(Vec<usize>, JuceVar)> {
         let mut cmds: Vec<(Vec<usize>, JuceVar)> = Vec::new();
         let bit = if active { 1 } else { 0 };
@@ -1120,6 +1143,23 @@ async fn save_ui_prefs(
 #[tauri::command]
 async fn get_custom_fn_mode(state: State<'_, AppState>) -> Result<CustomFnMode, String> {
     Ok(state.store.lock().await.custom_fn_mode)
+}
+
+/// Hardware Fn binding (`ENT_MONITOR, cs=0x0D` = `[cs, ch, entity, 0]`) for each Custom Studio Action.
+/// Single-register actions bind straight to their target so the firmware toggles it instantly and
+/// lights the Fn LED; multi-target actions anchor on one register and mirror the rest in software;
+/// actions with no register equivalent use the neutral `FnActive` flag.
+fn custom_fn_binding(mode: CustomFnMode) -> Option<[u8; 4]> {
+    match mode {
+        CustomFnMode::None => None,
+        CustomFnMode::MuteMic1 | CustomFnMode::MuteMics => Some([0x01, 0x00, 0x01, 0x00]), // Mic 1 Mute
+        CustomFnMode::MuteMic2 => Some([0x01, 0x01, 0x01, 0x00]),                         // Mic 2 Mute
+        CustomFnMode::MuteHeadphones => Some([0x02, 0x04, 0x02, 0x00]),                   // HP1 Mute
+        CustomFnMode::GlobalMute => Some([0x0A, 0x00, 0x00, 0x00]),                       // Global Mute
+        CustomFnMode::MidSide => Some([0x01, 0x00, 0x04, 0x00]),                          // Monitor Mid/Side
+        CustomFnMode::SwapSpkHp => Some([0x02, 0x00, 0x04, 0x00]),                        // Main Mute (+HP mirror)
+        _ => Some([0x0E, 0x00, 0x04, 0x00]),                                              // FnActive
+    }
 }
 
 #[tauri::command]
@@ -2744,7 +2784,7 @@ async fn run_direct_usb_session(
 
     enum UsbCmd {
         SetParam(Vec<usize>, JuceVar, ValueTreeNode),
-        SetFnKeyMode(i32, bool),
+        SetFnKeyMode(i32, Option<[u8; 4]>),
         SaveBootState,
         LoadBootState,
     }
@@ -2755,11 +2795,11 @@ async fn run_direct_usb_session(
     let stop_worker = stop_flag.clone();
     let (init_direct, init_custom_fn) = {
         let st = store.lock().await;
-        (st.config.direct_usb.clone(), st.custom_fn_mode != CustomFnMode::None)
+        (st.config.direct_usb.clone(), custom_fn_binding(st.custom_fn_mode))
     };
     let live_settings = Arc::new(std::sync::Mutex::new(init_direct));
     let worker_live_settings = live_settings.clone();
-    let live_custom_fn = Arc::new(AtomicBool::new(init_custom_fn));
+    let live_custom_fn = Arc::new(std::sync::Mutex::new(init_custom_fn));
     let worker_live_custom_fn = live_custom_fn.clone();
 
     let worker = std::thread::spawn(move || {
@@ -2808,7 +2848,7 @@ async fn run_direct_usb_session(
                 let mut ctx = build_direct_context(
                     &ready_dev,
                     &snap_settings,
-                    worker_live_custom_fn.load(Ordering::Relaxed),
+                    worker_live_custom_fn.lock().map(|g| *g).unwrap_or(None),
                 );
                 let _ = poll_watched_front_panel(&ready_dev, &mut ctx, true);
                 if let Ok(mut g) = worker_live_settings.lock() {
@@ -2830,7 +2870,7 @@ async fn run_direct_usb_session(
                     let mut batch: BTreeMap<Vec<usize>, JuceVar> = BTreeMap::new();
                     let mut do_save_boot = false;
                     let mut do_load_boot = false;
-                    let mut pending_fn_mode: Option<(i32, bool)> = None;
+                    let mut pending_fn_mode: Option<(i32, Option<[u8; 4]>)> = None;
                     while let Ok(cmd) = usb_cmd_rx.try_recv() {
                         match cmd {
                             UsbCmd::SetParam(path, val, tree_snap) => {
@@ -2843,8 +2883,8 @@ async fn run_direct_usb_session(
                         }
                     }
                     if let Some((mode, custom)) = pending_fn_mode {
-                        ctx.custom_fn_active = custom;
-                        write_fn_key_mode(&ready_dev, mode, custom);
+                        ctx.custom_fn_binding = custom;
+                        ctx.fn_watch = write_fn_key_mode(&ready_dev, mode, custom);
                     }
                     if let Some(ref tree_snap) = latest_tree {
                         write_param_batch_to_hardware(&ready_dev, &mut ctx, tree_snap, &batch);
@@ -2862,7 +2902,7 @@ async fn run_direct_usb_session(
                             ctx = build_direct_context(
                                 &ready_dev,
                                 &reload_settings,
-                                worker_live_custom_fn.load(Ordering::Relaxed),
+                                worker_live_custom_fn.lock().map(|g| *g).unwrap_or(None),
                             );
                             let _ = poll_watched_front_panel(&ready_dev, &mut ctx, true);
                             let _ = usb_ev_tx.send(UsbEvent::Connected {
@@ -2935,7 +2975,7 @@ async fn run_direct_usb_session(
             let mut ctx = build_direct_context(
                 &dev,
                 &snap_settings,
-                worker_live_custom_fn.load(Ordering::Relaxed),
+                worker_live_custom_fn.lock().map(|g| *g).unwrap_or(None),
             );
             let _ = poll_watched_front_panel(&dev, &mut ctx, true);
             if let Ok(mut g) = worker_live_settings.lock() {
@@ -2958,7 +2998,7 @@ async fn run_direct_usb_session(
                 let mut batch: BTreeMap<Vec<usize>, JuceVar> = BTreeMap::new();
                 let mut do_save_boot = false;
                 let mut do_load_boot = false;
-                let mut pending_fn_mode: Option<(i32, bool)> = None;
+                let mut pending_fn_mode: Option<(i32, Option<[u8; 4]>)> = None;
                 while let Ok(cmd) = usb_cmd_rx.try_recv() {
                     match cmd {
                         UsbCmd::SetParam(path, val, tree_snap) => {
@@ -2971,8 +3011,8 @@ async fn run_direct_usb_session(
                     }
                 }
                 if let Some((mode, custom)) = pending_fn_mode {
-                    ctx.custom_fn_active = custom;
-                    write_fn_key_mode(&dev, mode, custom);
+                    ctx.custom_fn_binding = custom;
+                    ctx.fn_watch = write_fn_key_mode(&dev, mode, custom);
                 }
                 if let Some(ref tree_snap) = latest_tree {
                     write_param_batch_to_hardware(&dev, &mut ctx, tree_snap, &batch);
@@ -2990,7 +3030,7 @@ async fn run_direct_usb_session(
                         ctx = build_direct_context(
                             &dev,
                             &reload_settings,
-                            worker_live_custom_fn.load(Ordering::Relaxed),
+                            worker_live_custom_fn.lock().map(|g| *g).unwrap_or(None),
                         );
                         let _ = poll_watched_front_panel(&dev, &mut ctx, true);
                         let _ = usb_ev_tx.send(UsbEvent::Connected {
@@ -3160,6 +3200,13 @@ async fn run_direct_usb_session(
                                 }
                             }
 
+                            // Hardware-bound Custom Studio Actions: mirror companion targets
+                            // (e.g. Mic 2 for "Mute Mics", HP1 for "Speakers / Headphones Swap")
+                            if st.custom_fn_mode != CustomFnMode::None {
+                                let cmds = st.apply_custom_fn_follower(&path, &value);
+                                auto_cmds.extend(cmds);
+                            }
+
                             let hp1 = if path == st.hp1_vol_path {
                                 value.as_f64().map(|d| {
                                     let c = d.clamp(-128.0, 0.0);
@@ -3248,10 +3295,14 @@ async fn run_direct_usb_session(
                     }
                     let _ = usb_cmd_tx.send(UsbCmd::LoadBootState);
                 } else if cmd.prop == "__hw_fn_mode" {
-                    let raw = cmd.value.as_i64().unwrap_or(0) as i32;
-                    let custom = raw < 0;
-                    live_custom_fn.store(custom, Ordering::Relaxed);
-                    let _ = usb_cmd_tx.send(UsbCmd::SetFnKeyMode(raw.max(0), custom));
+                    let (mode, custom) = {
+                        let st = store.lock().await;
+                        (st.config.direct_usb.fn_key_mode, custom_fn_binding(st.custom_fn_mode))
+                    };
+                    if let Ok(mut g) = live_custom_fn.lock() {
+                        *g = custom;
+                    }
+                    let _ = usb_cmd_tx.send(UsbCmd::SetFnKeyMode(mode, custom));
                 } else if cmd.prop == "value" {
                     let (tree_opt, sr_ed_updates, latest_direct) = {
                         let mut st = store.lock().await;

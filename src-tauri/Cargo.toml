@@ -1,6 +1,6 @@
 [package]
 name = "id-interface"
-version = "0.4.12"
+version = "0.4.13"
 description = "Open-source studio console, DSP mixer, and floating controller for Audient iD1, iD2, iD2+, and iD4+ (MK3) on Windows, macOS & Linux"
 authors = ["1ps3"]
 license = "MIT"
