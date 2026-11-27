@@ -3241,39 +3241,44 @@ mod tests {
     fn probe_fn_led() {
         let api = TusbApi::load().expect("Audient USB driver not found");
         let dev = api.open_first().expect("No Audient iD device connected");
-        let cur = dev.vendor_in(BREQ_PARAM, ENT_MONITOR, 0x0D00, 4).unwrap_or_default();
-        println!("Current cs=0x0D: {:02X?}", cur);
-
-        // 1. Test cs=0x0E = 1 while cs=0x0D is actually bound to 0x0E
-        let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0D00, &[0x0E, 0x00, ENT_MONITOR, 0x00]);
+        let orig_0d = dev.vendor_in(BREQ_PARAM, ENT_MONITOR, 0x0D00, 4).unwrap_or_default();
         let orig_0e = hw_get_u8(&dev, ENT_MONITOR, 0x0E, 0, 0);
-        println!("1) [cs=0x0D -> 0x0E] + cs=0x0E = 1 (watch Fn LED 1.2s)...");
+        let orig_dim = hw_get_u8(&dev, ENT_MONITOR, 0x03, 0, 0);
+        println!("Initial cs=0x0D: {:02X?}, cs=0x0E: {:02X}, Dim: {:02X}", orig_0d, orig_0e, orig_dim);
+
+        // A: pure [0x0D -> 0x0E] + [0x0E = 1]
+        println!("A) cs=0x0D=[0E,00,04,00], cs=0x0E=1 (1.5s)...");
+        let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0D00, &[0x0E, 0x00, ENT_MONITOR, 0x00]);
         let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0E00, &[1]);
-        std::thread::sleep(std::time::Duration::from_millis(1200));
+        std::thread::sleep(std::time::Duration::from_millis(1500));
+
+        // B: re-write cs=0x0D=[0E,00,04,00] AFTER cs=0x0E=1 (from Off -> 0x0E)
+        println!("B) cs=0x0E=1 then cs=0x0D=Off -> [0E,00,04,00] (1.5s)...");
+        let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0D00, &[0x00, 0x00, 0xFF, 0x00]);
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0D00, &[0x0E, 0x00, ENT_MONITOR, 0x00]);
+        std::thread::sleep(std::time::Duration::from_millis(1500));
+
+        // C: cs=0x0D=[0E,00,04,00], cs=0x0E=0, cs=0x03 (Dim)=1 (test if Dim lit it in video)
+        println!("C) cs=0x0D=[0E,00,04,00], cs=0x0E=0, Dim=1 (1.5s)...");
+        let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0E00, &[0]);
+        let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0300, &[1]);
+        std::thread::sleep(std::time::Duration::from_millis(1500));
+        let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0300, &[orig_dim]);
+
+        // D: cs=0x0D=[03,00,04,00] (Dim) + Dim=1 (baseline: confirm Dim lights Fn LED)
+        println!("D) cs=0x0D=Dim, Dim=1 (1.5s)...");
+        let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0D00, &[0x03, 0x00, ENT_MONITOR, 0x00]);
+        let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0300, &[1]);
+        std::thread::sleep(std::time::Duration::from_millis(1500));
+
+        // Restore everything
+        let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0300, &[orig_dim]);
         let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0E00, &[orig_0e]);
-
-        // Restore original cs=0x0D before testing candidate LED registers
-        if cur.len() == 4 {
-            let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0D00, &cur);
+        if orig_0d.len() == 4 {
+            let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0D00, &orig_0d);
         }
-
-        // 2. Test unknown 0x00 1-byte registers in ENT_MONITOR & ENT_SYSTEM (restoring each immediately)
-        let candidates: &[(&str, u8, u8)] = &[
-            ("ENT_MONITOR 0x09", ENT_MONITOR, 0x09),
-            ("ENT_MONITOR 0x12", ENT_MONITOR, 0x12),
-            ("ENT_MONITOR 0x14", ENT_MONITOR, 0x14),
-            ("ENT_SYSTEM  0x04", ENT_SYSTEM, 0x04),
-            ("ENT_SYSTEM  0x06", ENT_SYSTEM, 0x06),
-            ("ENT_SYSTEM  0x08", ENT_SYSTEM, 0x08),
-        ];
-        for (i, &(label, ent, cs)) in candidates.iter().enumerate() {
-            let orig = hw_get_u8(&dev, ent, cs, 0, 0);
-            println!("{}) {label} = 1 (watch Fn LED 1.2s)...", i + 2);
-            let _ = dev.vendor_out(BREQ_PARAM, ent, (cs as u16) << 8, &[1]);
-            std::thread::sleep(std::time::Duration::from_millis(1200));
-            let _ = dev.vendor_out(BREQ_PARAM, ent, (cs as u16) << 8, &[orig]);
-        }
-        println!("Done (all registers restored).");
+        println!("Done (all restored).");
     }
 
     #[test]
@@ -3311,7 +3316,12 @@ mod tests {
             }
             let cur_0e = hw_get_u8(&dev, ENT_MONITOR, 0x0E, 0, 0);
             if cur_0e != last_0e {
-                println!("  [{:>4}ms] cs=0x0E changed: {} -> {}", start.elapsed().as_millis(), last_0e, cur_0e);
+                println!("  [{:>4}ms] cs=0x0E changed: {} -> {} (bouncing USB write to trigger LED)",
+                    start.elapsed().as_millis(), last_0e, cur_0e);
+                let inv = if cur_0e != 0 { 0u8 } else { 1u8 };
+                let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0E00, &[inv]);
+                std::thread::sleep(std::time::Duration::from_millis(8));
+                let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0E00, &[cur_0e]);
                 last_0e = cur_0e;
             }
             let cur_hp = hw_get_u8(&dev, ENT_OUTPUTS, 0x02, 4, 0);

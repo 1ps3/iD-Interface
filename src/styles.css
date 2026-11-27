@@ -9466,3 +9466,34 @@ html.tray-menu-page body {
 :root[data-theme="liquidglass"][data-glass-scheme="light"] .phase-placeholder h3 {
   color: #1d1d1f;
 }
+
+/* =========================================================================
+   LIGHT MODE MIXER CONTRAST (STUDIO DAYLIGHT & LIGHT LIQUID GLASS)
+   ========================================================================= */
+
+/* Unlinked (MONO) faders: crisp dark graphite fill so level is obvious at a glance on light troughs */
+:root[data-light-ui="true"] .mixer-pair:not(.is-stereo) .fader-fill {
+  background: #3a3a42;
+}
+
+:root[data-light-ui="true"] .mixer-pair:not(.is-stereo) .fader-thumb-line {
+  background: #3a3a42;
+}
+
+/* Inspected channel & pair header highlight (replaces invisible white-on-white tint) */
+:root[data-light-ui="true"] .pair-head-row.is-inspected-pair,
+:root[data-light-ui="true"] .mixer-pair.is-stereo .pair-head-row.is-inspected-pair:hover,
+:root[data-light-ui="true"] .mixer-pair:not(.is-stereo) .clickable-head.is-inspected,
+:root[data-light-ui="true"] .mixer-pair:not(.is-stereo) .clickable-head.is-inspected:hover {
+  background: rgba(0, 0, 0, 0.055);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14);
+}
+
+:root[data-light-ui="true"] .mixer-pair.is-stereo .pair-head-row:has([data-inspect-ch]):hover,
+:root[data-light-ui="true"] .mixer-pair:not(.is-stereo) .clickable-head:hover {
+  background: rgba(0, 0, 0, 0.032);
+}
+
+:root[data-light-ui="true"] .pair-center-divider {
+  background: rgba(0, 0, 0, 0.08);
+}
