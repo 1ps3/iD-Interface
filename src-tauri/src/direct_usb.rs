@@ -321,6 +321,8 @@ pub struct DirectContext {
     pub custom_fn_binding: Option<[u8; 4]>,
     /// Register currently bound to the physical Fn button, polled every tick for instant response
     pub fn_watch: Option<HwRegKey>,
+    /// Exact 4-byte binding expected in `ENT_MONITOR cs=0x0D` (auto-rearmed if late USB boot resets it)
+    pub expected_fn_bytes: [u8; 4],
     /// Saved sample rate to re-assert for a few seconds after connect, so the OS audio stack
     /// (Windows / CoreAudio) re-enumerating the device can't silently override the user's choice
     pub sr_guard: Option<(u32, std::time::Instant)>,
@@ -1414,7 +1416,11 @@ pub fn fn_key_mode_to_hw_bytes(fn_mode: i32, custom_active: bool) -> [u8; 4] {
 /// Custom Studio Actions bind straight to their real target register where possible (e.g. Mic 1
 /// Mute) so the firmware toggles it instantly and lights the Fn LED; if the firmware rejects that
 /// target, fall back to the neutral `FnActive` flag. Returns the register now bound to the button.
-pub fn write_fn_key_mode(dev: &TusbDevice<'_>, fn_mode: i32, custom: Option<[u8; 4]>) -> Option<HwRegKey> {
+pub fn write_fn_key_mode(
+    dev: &TusbDevice<'_>,
+    fn_mode: i32,
+    custom: Option<[u8; 4]>,
+) -> (Option<HwRegKey>, [u8; 4]) {
     const FN_ACTIVE: [u8; 4] = [0x0E, 0x00, ENT_MONITOR, 0x00];
     let mut bytes = custom.unwrap_or_else(|| fn_key_mode_to_hw_bytes(fn_mode, false));
     let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0D00, &bytes);
@@ -1428,11 +1434,12 @@ pub fn write_fn_key_mode(dev: &TusbDevice<'_>, fn_mode: i32, custom: Option<[u8;
             let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0D00, &bytes);
         }
     }
-    if bytes[2] == 0xFF {
+    let watch = if bytes[2] == 0xFF {
         None
     } else {
         Some(HwRegKey { entity: bytes[2], cs: bytes[0], ch: bytes[1] })
-    }
+    };
+    (watch, bytes)
 }
 
 /// Read the complete live iD MK3 state directly over USB and build the ValueTree + binding map.
@@ -2322,7 +2329,7 @@ pub fn build_direct_context(
     // then arm the physical Function button in hardware so it works immediately
     // even after a fresh power cycle without Audient Device Manager.
     let _ = dev.vendor_out(BREQ_PARAM, ENT_SYSTEM, 0x0C00, &[1]);
-    let fn_watch = write_fn_key_mode(dev, settings.fn_key_mode, custom_fn_binding);
+    let (fn_watch, expected_fn_bytes) = write_fn_key_mode(dev, settings.fn_key_mode, custom_fn_binding);
 
     let mut ctx = DirectContext {
         tree,
@@ -2336,6 +2343,7 @@ pub fn build_direct_context(
         panel_cursor: 0,
         custom_fn_binding,
         fn_watch,
+        expected_fn_bytes,
         sr_guard: settings
             .sample_rate
             .filter(|s| *s > 0)
@@ -2760,7 +2768,9 @@ pub fn write_param_to_hardware(
         }
         HwBinding::FnKeyMode => {
             if let Some(v) = value.as_i64() {
-                ctx.fn_watch = write_fn_key_mode(dev, v as i32, ctx.custom_fn_binding);
+                let (w, b) = write_fn_key_mode(dev, v as i32, ctx.custom_fn_binding);
+                ctx.fn_watch = w;
+                ctx.expected_fn_bytes = b;
             }
         }
     }
@@ -2825,8 +2835,8 @@ pub fn poll_watched_front_panel(
         }
     }
 
-    let total_slots = regs.len() + 1; // +1 for external sample-rate check
-    let slots_to_poll = if seed_only { total_slots } else { 2 };
+    let total_slots = regs.len() + 2; // +1 sample-rate check, +1 cs=0x0D Fn binding guard
+    let slots_to_poll = if seed_only { regs.len() + 1 } else { 2 };
 
     for _ in 0..slots_to_poll {
         let slot = if seed_only {
@@ -2865,7 +2875,7 @@ pub fn poll_watched_front_panel(
                 };
                 updates.push((path.clone(), val));
             }
-        } else {
+        } else if slot == regs.len() {
             // Also detect external sample rate changes (e.g. DAW / Windows Sound Settings)
             if let Some(live_sr) = dev.get_sample_rate() {
                 if live_sr > 0 && live_sr != ctx.sample_rate {
@@ -2878,6 +2888,14 @@ pub fn poll_watched_front_panel(
                             updates.push((sr_path.clone(), JuceVar::Int(live_sr as i32)));
                         }
                     }
+                }
+            }
+        } else {
+            // Guard ENT_MONITOR cs=0x0D against late USB-C boot resets on macOS/Windows:
+            // if firmware drifted away from our configured binding, silently re-arm it.
+            if let Ok(buf) = dev.vendor_in(BREQ_PARAM, ENT_MONITOR, 0x0D00, 4) {
+                if buf.len() >= 4 && buf[..4] != ctx.expected_fn_bytes[..] {
+                    let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0D00, &ctx.expected_fn_bytes);
                 }
             }
         }
@@ -3256,5 +3274,63 @@ mod tests {
             let _ = dev.vendor_out(BREQ_PARAM, ent, (cs as u16) << 8, &[orig]);
         }
         println!("Done (all registers restored).");
+    }
+
+    #[test]
+    #[ignore]
+    fn probe_fn_press() {
+        let api = TusbApi::load().expect("Audient USB driver not found");
+        let dev = api.open_first().expect("No Audient iD device connected");
+        let orig_0d = dev.vendor_in(BREQ_PARAM, ENT_MONITOR, 0x0D00, 4).unwrap_or_default();
+        let orig_0e = hw_get_u8(&dev, ENT_MONITOR, 0x0E, 0, 0);
+        println!("Initial cs=0x0D: {:02X?}, cs=0x0E: {:02X}", orig_0d, orig_0e);
+
+        // Drain any stale bReq=3 FIFO events first
+        for _ in 0..32 {
+            let Ok(ev) = dev.vendor_in(BREQ_EVENT_POLL, ENT_SYSTEM, 0x0000, 4) else { break };
+            if ev.len() < 4 || (ev[0] == 0xFF && ev[3] == 0xFF) { break; }
+        }
+
+        // Bind cs=0x0D -> [0E, 00, 04, 00] and watch physical Fn presses for 6 seconds
+        let target = [0x0E, 0x00, ENT_MONITOR, 0x00];
+        let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0D00, &target);
+        let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0E00, &[0]);
+        let rb = dev.vendor_in(BREQ_PARAM, ENT_MONITOR, 0x0D00, 4).unwrap_or_default();
+        println!("Bound cs=0x0D -> {:02X?}. PRESS THE PHYSICAL FN BUTTON 2-3 TIMES NOW (6s)...", rb);
+
+        let mut last_0e = hw_get_u8(&dev, ENT_MONITOR, 0x0E, 0, 0);
+        let mut last_hp = hw_get_u8(&dev, ENT_OUTPUTS, 0x02, 4, 0);
+        let mut last_m1 = hw_get_u8(&dev, ENT_INPUTS, 0x01, 0, 0);
+        let start = std::time::Instant::now();
+        while start.elapsed() < std::time::Duration::from_secs(6) {
+            if let Ok(ev) = dev.vendor_in(BREQ_EVENT_POLL, ENT_SYSTEM, 0x0000, 4) {
+                if ev.len() >= 4 && !(ev[0] == 0xFF && ev[3] == 0xFF) {
+                    println!("  [{:>4}ms] bReq=3 event: {:02X?} (ent=0x{:02X} cs=0x{:02X} ch=0x{:02X})",
+                        start.elapsed().as_millis(), ev, ev[3], ev[0], ev[1]);
+                }
+            }
+            let cur_0e = hw_get_u8(&dev, ENT_MONITOR, 0x0E, 0, 0);
+            if cur_0e != last_0e {
+                println!("  [{:>4}ms] cs=0x0E changed: {} -> {}", start.elapsed().as_millis(), last_0e, cur_0e);
+                last_0e = cur_0e;
+            }
+            let cur_hp = hw_get_u8(&dev, ENT_OUTPUTS, 0x02, 4, 0);
+            if cur_hp != last_hp {
+                println!("  [{:>4}ms] HP1 Mute changed: {} -> {}", start.elapsed().as_millis(), last_hp, cur_hp);
+                last_hp = cur_hp;
+            }
+            let cur_m1 = hw_get_u8(&dev, ENT_INPUTS, 0x01, 0, 0);
+            if cur_m1 != last_m1 {
+                println!("  [{:>4}ms] Mic1 Mute changed: {} -> {}", start.elapsed().as_millis(), last_m1, cur_m1);
+                last_m1 = cur_m1;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+
+        if orig_0d.len() == 4 {
+            let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0D00, &orig_0d);
+        }
+        let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0E00, &[orig_0e]);
+        println!("Done (restored).");
     }
 }

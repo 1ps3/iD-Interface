@@ -2855,7 +2855,9 @@ async fn run_direct_usb_session(
                     }
                     if let Some((mode, custom)) = pending_fn_mode {
                         ctx.custom_fn_binding = custom;
-                        ctx.fn_watch = write_fn_key_mode(&ready_dev, mode, custom);
+                        let (w, b) = write_fn_key_mode(&ready_dev, mode, custom);
+                        ctx.fn_watch = w;
+                        ctx.expected_fn_bytes = b;
                     }
                     if let Some(ref tree_snap) = latest_tree {
                         write_param_batch_to_hardware(&ready_dev, &mut ctx, tree_snap, &batch);
@@ -2983,7 +2985,9 @@ async fn run_direct_usb_session(
                 }
                 if let Some((mode, custom)) = pending_fn_mode {
                     ctx.custom_fn_binding = custom;
-                    ctx.fn_watch = write_fn_key_mode(&dev, mode, custom);
+                    let (w, b) = write_fn_key_mode(&dev, mode, custom);
+                    ctx.fn_watch = w;
+                    ctx.expected_fn_bytes = b;
                 }
                 if let Some(ref tree_snap) = latest_tree {
                     write_param_batch_to_hardware(&dev, &mut ctx, tree_snap, &batch);
@@ -3167,6 +3171,10 @@ async fn run_direct_usb_session(
                                             let cmds = st.apply_standard_fn_trigger(active);
                                             auto_cmds.extend(cmds);
                                         }
+                                        // Echo 0x0E back over USB: on iD MK3 firmware, physical presses
+                                        // flip 0x0E without updating the LED, while writing 0x0E via USB
+                                        // turns the bright white Fn button LED on/off cleanly.
+                                        auto_cmds.push((path.clone(), JuceVar::Int(if active { 1 } else { 0 })));
                                     }
                                 }
                             }
@@ -3268,7 +3276,7 @@ async fn run_direct_usb_session(
                     }
                     let _ = usb_cmd_tx.send(UsbCmd::SetFnKeyMode(mode, custom));
                 } else if cmd.prop == "value" {
-                    let (tree_opt, sr_ed_updates, latest_direct) = {
+                    let (tree_opt, sr_ed_updates, latest_direct, fn_led_sync) = {
                         let mut st = store.lock().await;
                         let is_sr = st.sr_path.as_ref() == Some(&cmd.path);
                         let ed_upd = if is_sr {
@@ -3282,7 +3290,36 @@ async fn run_direct_usb_session(
                         } else {
                             None
                         };
-                        (st.root.clone(), ed_upd, st.config.direct_usb.clone())
+                        // Keep physical Fn LED (0x0E) synced when toggling the bound control in the UI
+                        let led_sync = if st.custom_fn_mode != CustomFnMode::None
+                            && !matches!(
+                                st.custom_fn_mode,
+                                CustomFnMode::ToggleScene1
+                                    | CustomFnMode::ToggleScene2
+                                    | CustomFnMode::ToggleScene3
+                                    | CustomFnMode::ToggleScene4
+                            )
+                            && st.fn_active_path.as_ref() != Some(&cmd.path)
+                        {
+                            let want = st.custom_fn_is_active();
+                            if st.last_fn_active != Some(want) {
+                                st.last_fn_active = Some(want);
+                                st.fn_active_path.clone().map(|fp| {
+                                    let v = JuceVar::Int(if want { 1 } else { 0 });
+                                    if let Some(root) = st.root.as_mut() {
+                                        if let Some(n) = root.get_path_mut(&fp) {
+                                            n.props.insert("value".into(), v.clone());
+                                        }
+                                    }
+                                    (fp, v)
+                                })
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
+                        (st.root.clone(), ed_upd, st.config.direct_usb.clone(), led_sync)
                     };
                     if let Ok(mut g) = live_settings.lock() {
                         *g = latest_direct;
@@ -3300,7 +3337,10 @@ async fn run_direct_usb_session(
                         }
                     }
                     if let Some(tree_snap) = tree_opt {
-                        let _ = usb_cmd_tx.send(UsbCmd::SetParam(cmd.path, cmd.value, tree_snap));
+                        let _ = usb_cmd_tx.send(UsbCmd::SetParam(cmd.path, cmd.value, tree_snap.clone()));
+                        if let Some((fp, fv)) = fn_led_sync {
+                            let _ = usb_cmd_tx.send(UsbCmd::SetParam(fp, fv, tree_snap));
+                        }
                     }
                 }
             }
