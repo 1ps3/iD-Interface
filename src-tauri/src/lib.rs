@@ -3621,32 +3621,38 @@ fn ensure_audient_device_manager_running() {
 
 #[cfg(target_os = "macos")]
 fn macos_tray_template_icon() -> tauri::image::Image<'static> {
-    // 44x44 (@2x Retina = 22pt) monochrome alpha-only silhouette of the iD rotary knob:
-    // 270° outer meter arc + inner knob ring + angled indicator line.
+    // 44x44 (@2x Retina = 22pt) monochrome alpha-only silhouette matching the Option A app icon:
+    // 270° outer level arc (7:30..2:00 at 100% alpha, 2:00..4:30 unlit track at 32% alpha)
+    // + inner rotary knob ring + rounded indicator pointer at 2 o'clock.
     // Marked as a macOS template image (`icon_as_template(true)`), so macOS automatically
-    // tints it flat white on Dark Mode menu bars and flat dark on Light Mode menu bars.
+    // tints it white on Dark Mode menu bars and dark on Light Mode menu bars while preserving
+    // the subtle 32% alpha track contrast (just like native macOS Wi-Fi / Volume icons).
     const SIZE: usize = 44;
     let cx = 22.0_f32;
     let cy = 22.5_f32;
 
     let arc_r = 16.5_f32;
-    let arc_hw = 1.85_f32;
-    let gap_start = 48.0_f32.to_radians();  // ~4:30 o'clock (screen +y down)
-    let gap_end = 132.0_f32.to_radians();   // ~7:30 o'clock
-    let cap1_x = cx + arc_r * gap_start.cos();
-    let cap1_y = cy + arc_r * gap_start.sin();
-    let cap2_x = cx + arc_r * gap_end.cos();
-    let cap2_y = cy + arc_r * gap_end.sin();
+    let arc_hw = 1.9_f32;
+    let gap_start = 45.0_f32.to_radians();  // 4:30 o'clock (screen +y down)
+    let gap_end = 135.0_f32.to_radians();   // 7:30 o'clock
+    let lit_end = (-30.6_f32).to_radians(); // ~2:00 o'clock (72% of 270° sweep)
 
-    let ring_r = 9.4_f32;
-    let ring_hw = 1.65_f32;
+    let cap_unlit_x = cx + arc_r * gap_start.cos();
+    let cap_unlit_y = cy + arc_r * gap_start.sin();
+    let cap_start_x = cx + arc_r * gap_end.cos();
+    let cap_start_y = cy + arc_r * gap_end.sin();
+    let cap_lit_x = cx + arc_r * lit_end.cos();
+    let cap_lit_y = cy + arc_r * lit_end.sin();
 
-    // Indicator pointer at -28° (~2 o'clock), matching the iD app icon
-    let ptr_ang = (-28.0_f32).to_radians();
-    let px0 = cx + 2.2 * ptr_ang.cos();
-    let py0 = cy + 2.2 * ptr_ang.sin();
-    let px1 = cx + 8.6 * ptr_ang.cos();
-    let py1 = cy + 8.6 * ptr_ang.sin();
+    // Match Option A's knob-to-arc proportion (~0.64)
+    let ring_r = 10.6_f32;
+    let ring_hw = 1.5_f32;
+
+    // Rounded pointer aligned with lit arc end (-30.6°), cleanly inset from center & rim
+    let px0 = cx + 4.2 * lit_end.cos();
+    let py0 = cy + 4.2 * lit_end.sin();
+    let px1 = cx + 7.9 * lit_end.cos();
+    let py1 = cy + 7.9 * lit_end.sin();
     let ptr_hw = 1.55_f32;
     let seg_dx = px1 - px0;
     let seg_dy = py1 - py0;
@@ -3655,7 +3661,7 @@ fn macos_tray_template_icon() -> tauri::image::Image<'static> {
     let mut rgba = vec![0u8; SIZE * SIZE * 4];
     for y in 0..SIZE {
         for x in 0..SIZE {
-            let mut hits = 0u32;
+            let mut alpha_sum = 0.0_f32;
             // 4x4 supersampling for crisp Retina anti-aliasing
             for sy in 0..4 {
                 let fy = (y as f32) + (sy as f32 + 0.5) * 0.25;
@@ -3666,25 +3672,35 @@ fn macos_tray_template_icon() -> tauri::image::Image<'static> {
                     let r = (dx * dx + dy * dy).sqrt();
                     let ang = dy.atan2(dx);
 
-                    // 1. Outer 270° arc with rounded endcaps
-                    let on_arc = ((r - arc_r).abs() <= arc_hw && !(ang > gap_start && ang < gap_end))
-                        || ((fx - cap1_x).hypot(fy - cap1_y) <= arc_hw)
-                        || ((fx - cap2_x).hypot(fy - cap2_y) <= arc_hw);
+                    let in_arc_band = (r - arc_r).abs() <= arc_hw;
+                    let in_gap = ang > gap_start && ang < gap_end;
+                    let in_unlit_span = ang > lit_end && ang <= gap_start;
 
-                    // 2. Inner rotary knob ring
+                    // 1. Active lit arc (7:30 clockwise to 2:00) with rounded endcaps
+                    let on_lit_arc = (in_arc_band && !in_gap && !in_unlit_span)
+                        || ((fx - cap_start_x).hypot(fy - cap_start_y) <= arc_hw)
+                        || ((fx - cap_lit_x).hypot(fy - cap_lit_y) <= arc_hw);
+
+                    // 2. Unlit track tail (2:00 to 4:30) with rounded endcap
+                    let on_unlit_arc = (in_arc_band && in_unlit_span)
+                        || ((fx - cap_unlit_x).hypot(fy - cap_unlit_y) <= arc_hw);
+
+                    // 3. Inner rotary knob ring
                     let on_ring = (r - ring_r).abs() <= ring_hw;
 
-                    // 3. Rounded indicator pointer inside knob
+                    // 4. Rounded indicator pointer inside knob
                     let t = (((fx - px0) * seg_dx + (fy - py0) * seg_dy) / seg_len_sq).clamp(0.0, 1.0);
                     let on_ptr = (fx - (px0 + t * seg_dx)).hypot(fy - (py0 + t * seg_dy)) <= ptr_hw;
 
-                    if on_arc || on_ring || on_ptr {
-                        hits += 1;
+                    if on_lit_arc || on_ring || on_ptr {
+                        alpha_sum += 1.0;
+                    } else if on_unlit_arc {
+                        alpha_sum += 0.32;
                     }
                 }
             }
-            if hits > 0 {
-                let alpha = ((hits * 255 + 8) / 16).min(255) as u8;
+            if alpha_sum > 0.0 {
+                let alpha = ((alpha_sum / 16.0) * 255.0).round().clamp(0.0, 255.0) as u8;
                 let idx = (y * SIZE + x) * 4;
                 rgba[idx] = 0;
                 rgba[idx + 1] = 0;
