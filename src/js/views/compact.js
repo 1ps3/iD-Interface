@@ -381,8 +381,9 @@ export function createCompactWidget(rootEl, store, invoke) {
             <line id="hwDialPtr" x1="${DIAL_CX}" y1="65" x2="${DIAL_CX}" y2="76" stroke="#ffffff" stroke-width="3.6" stroke-linecap="round" opacity="0.92" />
           </g>
 
-          <!-- Optically centered live readout -->
+          <!-- Optically centered live readout + dim underlying level when muted -->
           <text id="hwDialVal" x="${DIAL_CX}" y="${DIAL_CY}" dy="0.35em" text-anchor="middle" class="hw-dial-val" fill="#ffffff" font-size="27"><tspan id="hwValSign"></tspan><tspan id="hwValBody">-35</tspan><tspan id="hwValPad" fill-opacity="0" aria-hidden="true"></tspan></text>
+          <text id="hwDialSub" x="${DIAL_CX}" y="${DIAL_CY + 19}" dy="0.35em" text-anchor="middle" class="hw-dial-sub" opacity="0"></text>
 
           <!-- Dynamic interface model + active channel BELOW model -->
           <text id="hwDialModel" x="${DIAL_CX}" y="203" class="hw-dial-model">iD2</text>
@@ -443,6 +444,7 @@ export function createCompactWidget(rootEl, store, invoke) {
   const dialRotor = scalerEl.querySelector("#hwDialRotor");
   const dialPtr = scalerEl.querySelector("#hwDialPtr");
   const dialValText = scalerEl.querySelector("#hwDialVal");
+  const dialSubText = scalerEl.querySelector("#hwDialSub");
   const valSign = scalerEl.querySelector("#hwValSign");
   const valBody = scalerEl.querySelector("#hwValBody");
   const valPad = scalerEl.querySelector("#hwValPad");
@@ -479,11 +481,17 @@ export function createCompactWidget(rootEl, store, invoke) {
     });
   });
 
-  function setCenteredVal(str, mutedStyle) {
+  function setCenteredVal(str, mutedStyle, subStr = "") {
     const s = String(str);
     const tc = getCompactThemeColors();
-    dialValText.setAttribute("fill", mutedStyle ? "#d96c66" : tc.valText);
-    dialValText.setAttribute("font-size", mutedStyle ? "19" : "27");
+    dialValText.setAttribute("fill", mutedStyle ? "#ef635d" : tc.valText);
+    dialValText.setAttribute("font-size", mutedStyle ? "18" : "27");
+    dialValText.setAttribute("y", mutedStyle && subStr ? String(DIAL_CY - 7) : String(DIAL_CY));
+    if (dialSubText) {
+      dialSubText.textContent = mutedStyle ? subStr : "";
+      dialSubText.setAttribute("fill", tc.valText);
+      dialSubText.setAttribute("opacity", mutedStyle && subStr ? "0.46" : "0");
+    }
     if (!mutedStyle && s.length > 1 && (s[0] === "-" || s[0] === "+")) {
       valSign.textContent = s[0];
       valBody.textContent = s.slice(1);
@@ -534,12 +542,18 @@ export function createCompactWidget(rootEl, store, invoke) {
     dialPtr.setAttribute("stroke", mutedNow ? "#c95a55" : tc.ptrCol);
 
     if (mutedNow) {
-      setCenteredVal("MUTE", true);
+      let subLabel = "-∞";
+      if (!dialCfg.muteAtMin || clean > dialCfg.min) {
+        const rounded = Math.round(clean);
+        const signed = dialCfg.prefixPlus && rounded > 0 ? `+${rounded}` : String(rounded);
+        subLabel = `${signed} dB`;
+      }
+      setCenteredVal("MUTE", true, subLabel);
     } else {
       let formatted = showDecimal ? clean.toFixed(1) : String(Math.round(clean));
       if (formatted.endsWith(".0")) formatted = formatted.slice(0, -2);
       const str = dialCfg.prefixPlus && clean > 0 ? `+${formatted}` : formatted;
-      setCenteredVal(str, false);
+      setCenteredVal(str, false, "");
     }
   }
 
@@ -700,7 +714,7 @@ export function createCompactWidget(rootEl, store, invoke) {
 
   function setBtnTone(idx, active, tone = "is-active") {
     const btn = ctxBtns[idx];
-    btn.classList.remove("is-active", "is-red", "is-purple", "is-amber", "is-green");
+    btn.classList.remove("is-active", "is-red", "is-mute", "is-purple", "is-amber", "is-green");
     if (active) {
       btn.classList.add(ledMode === "mono" ? "is-active" : tone);
     }
@@ -817,7 +831,7 @@ export function createCompactWidget(rootEl, store, invoke) {
       setCtxButton(3, "ALT", () => p.speakerSel && store.setParam(p.speakerSel, store.getVal(p.speakerSel, 0) ? 0 : 1));
 
       const syncBtns = () => {
-        setBtnTone(0, Boolean(store.getVal(p.mainMute, 0)), "is-red");
+        setBtnTone(0, Boolean(store.getVal(p.mainMute, 0)), "is-mute");
         setBtnTone(1, Boolean(store.getVal(p.dim, 0)), "is-active");
         setBtnTone(2, Boolean(store.getVal(p.mono, 0)), "is-active");
         const isAlt = Boolean(store.getVal(p.speakerSel, 0));
@@ -860,7 +874,7 @@ export function createCompactWidget(rootEl, store, invoke) {
       setCtxButton(3, "MIX B", () => p.hp1Src && store.setParam(p.hp1Src, 2));
 
       const syncHpBtns = () => {
-        setBtnTone(0, Boolean(store.getVal(p.hp1Mute, 0)), "is-red");
+        setBtnTone(0, Boolean(store.getVal(p.hp1Mute, 0)), "is-mute");
         const src = Number(store.getVal(p.hp1Src, 0));
         setBtnTone(1, src === 0, "is-active");
         setBtnTone(2, src === 1, "is-purple");
@@ -915,7 +929,7 @@ export function createCompactWidget(rootEl, store, invoke) {
       const syncMicBtns = () => {
         setBtnTone(0, Boolean(store.getVal(p48Path, 0)), "is-red");
         setBtnTone(1, Boolean(store.getVal(hmxPath, 0)) && Boolean(store.getVal(airPath, 0)), "is-purple");
-        setBtnTone(2, Boolean(store.getVal(mutePath, 0)), "is-red");
+        setBtnTone(2, Boolean(store.getVal(mutePath, 0)), "is-mute");
         setBtnTone(3, Boolean(store.getVal(hpfPath, 0)), "is-green");
       };
       [p48Path, hmxPath, airPath, mutePath, hpfPath].forEach((bp) => bind(bp, syncMicBtns));
@@ -974,7 +988,7 @@ export function createCompactWidget(rootEl, store, invoke) {
 
     const syncPairBtns = () => {
       if (!pair) return;
-      setBtnTone(0, Boolean(store.getVal(pair.ch0.mute, 0) || store.getVal(pair.ch1.mute, 0)), "is-red");
+      setBtnTone(0, Boolean(store.getVal(pair.ch0.mute, 0) || store.getVal(pair.ch1.mute, 0)), "is-mute");
       setBtnTone(1, Boolean(store.getVal(pair.ch0.solo, 0) || store.getVal(pair.ch1.solo, 0)), "is-amber");
       const linked = Boolean(store.getVal(pair.link, 0));
       ctxBtns[2].textContent = linked ? "STEREO" : "MONO";

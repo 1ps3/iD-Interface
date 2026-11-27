@@ -134,6 +134,7 @@ export function createKnob(container, opts = {}) {
       <line x1="100" y1="${ptrY1}" x2="100" y2="${ptrY2}" class="pointer" />
     </g>
     <text x="100" y="100" dy="0.35em" text-anchor="middle" class="db-value" style="font-size:${valueSize}px"><tspan class="val-sign"></tspan><tspan class="val-body">0</tspan><tspan class="val-pad" fill-opacity="0" aria-hidden="true"></tspan></text>
+    ${!compact ? `<text x="100" y="128" dy="0.35em" text-anchor="middle" class="db-mute-sub"></text>` : ""}
     <circle cx="100" cy="100" r="${hitRadius}" class="knob-hit" />
   `;
 
@@ -146,6 +147,7 @@ export function createKnob(container, opts = {}) {
   const signSpan = valueText.querySelector(".val-sign");
   const bodySpan = valueText.querySelector(".val-body");
   const padSpan = valueText.querySelector(".val-pad");
+  const muteSubText = svg.querySelector(".db-mute-sub");
   const unitText = svg.querySelector(".db-unit");
   const knobHit = svg.querySelector(".knob-hit");
 
@@ -214,18 +216,26 @@ export function createKnob(container, opts = {}) {
     const arcFrom = centerZero ? ZERO_ANGLE : START_ANGLE;
     trackActive.setAttribute("d", describeArc(100, 100, trackRadius, arcFrom, angle));
     dialRotor.setAttribute("transform", `rotate(${angle} 100 100)`);
-    trackActive.classList.toggle("muted", muted);
+    const isMuteDisplay = muted || (muteAtMin && clean <= min);
+    trackActive.classList.toggle("muted", isMuteDisplay);
+    svg.classList.toggle("is-muted", isMuteDisplay);
     svg.classList.toggle("disabled", disabled);
     svg.classList.toggle("faded", faded);
 
     if (muteAtMin && clean <= min) {
       setCenteredLabel("MUTE");
+      valueText.setAttribute("y", muteSubText ? "92" : "100");
+      if (muteSubText) muteSubText.textContent = "-∞";
       if (unitText) unitText.textContent = muteSubLabel;
     } else if (muted) {
       setCenteredLabel("MUTE");
+      valueText.setAttribute("y", muteSubText ? "92" : "100");
+      if (muteSubText) muteSubText.textContent = `${formatDisplay(clean, false)} ${unit}`.trim();
       if (unitText) unitText.textContent = `${formatDisplay(clean, false)} ${unit}`;
     } else {
       setCenteredLabel(formatDisplay(clean, showDecimal));
+      valueText.setAttribute("y", "100");
+      if (muteSubText) muteSubText.textContent = "";
       if (unitText) unitText.textContent = unit;
     }
   }
