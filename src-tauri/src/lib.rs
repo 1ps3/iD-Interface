@@ -664,43 +664,10 @@ impl AdmStore {
     }
 
     fn build_startup_restore_cmds(&mut self) -> Vec<OutboundPropertyChange> {
-        if self.startup_restored {
-            return Vec::new();
-        }
-        self.startup_restored = true;
-        let mut cmds = Vec::new();
-
-        fn push_int_if_diff(
-            root: &mut Option<ValueTreeNode>,
-            cmds: &mut Vec<OutboundPropertyChange>,
-            opt_path: &Option<Vec<usize>>,
-            target: i32,
-        ) {
-            let Some(p) = opt_path.as_ref() else { return };
-            let current = root
-                .as_ref()
-                .and_then(|r| r.get_path(p))
-                .and_then(|n| n.props.get("value"))
-                .and_then(|v| v.as_i64())
-                .map(|v| v as i32);
-            if current != Some(target) {
-                if let Some(r) = root.as_mut() {
-                    if let Some(n) = r.get_path_mut(p) {
-                        n.props.insert("value".into(), JuceVar::Int(target));
-                    }
-                }
-                cmds.push(OutboundPropertyChange {
-                    path: p.clone(),
-                    prop: "value".into(),
-                    value: JuceVar::Int(target),
-                });
-            }
-        }
-
         // In ADM mode, let ADM own its engine/monitor & Function button settings completely.
         // Custom Studio Actions are exclusive to Direct USB mode.
-        let _ = push_int_if_diff;
-        cmds
+        self.startup_restored = true;
+        Vec::new()
     }
 
     fn snapshot(&self) -> Option<StateSnapshot> {
