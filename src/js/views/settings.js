@@ -558,10 +558,10 @@ export function createSettingsView(container, store, callbacks = {}) {
       if (val.startsWith("custom:")) {
         await store.setCustomFnMode(val.slice(7));
       } else if (val.startsWith("hw:")) {
+        await store.setParam(p.fnKeyMode, Number(val.slice(3)));
         if ((store.customFnMode || "none") !== "none") {
           await store.setCustomFnMode("none");
         }
-        await store.setParam(p.fnKeyMode, Number(val.slice(3)));
       }
       syncFn();
     });

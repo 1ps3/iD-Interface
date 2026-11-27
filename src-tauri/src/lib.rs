@@ -250,10 +250,7 @@ impl AdmStore {
             } else if self.clk_path.as_deref() == Some(path) && d.clock_source != Some(v) {
                 d.clock_source = Some(v);
                 dirty = true;
-            } else if self.fn_mode_path.as_deref() == Some(path)
-                && self.custom_fn_mode == CustomFnMode::None
-                && d.fn_key_mode != v
-            {
+            } else if self.fn_mode_path.as_deref() == Some(path) && d.fn_key_mode != v {
                 d.fn_key_mode = v;
                 dirty = true;
             } else if self.vol_recall_path.as_deref() == Some(path) && d.vol_recall != v {
@@ -2875,11 +2872,11 @@ async fn run_direct_usb_session(
                             UsbCmd::LoadBootState => do_load_boot = true,
                         }
                     }
-                    if let Some(ref tree_snap) = latest_tree {
-                        write_param_batch_to_hardware(&ready_dev, &mut ctx, tree_snap, &batch);
-                    }
                     if let Some((mode, custom)) = pending_fn_mode {
                         write_fn_key_mode(&ready_dev, mode, custom);
+                    }
+                    if let Some(ref tree_snap) = latest_tree {
+                        write_param_batch_to_hardware(&ready_dev, &mut ctx, tree_snap, &batch);
                     }
                     if do_save_boot {
                         let _ = save_boot_state(&ready_dev);
@@ -3002,11 +2999,11 @@ async fn run_direct_usb_session(
                         UsbCmd::LoadBootState => do_load_boot = true,
                     }
                 }
-                if let Some(ref tree_snap) = latest_tree {
-                    write_param_batch_to_hardware(&dev, &mut ctx, tree_snap, &batch);
-                }
                 if let Some((mode, custom)) = pending_fn_mode {
                     write_fn_key_mode(&dev, mode, custom);
+                }
+                if let Some(ref tree_snap) = latest_tree {
+                    write_param_batch_to_hardware(&dev, &mut ctx, tree_snap, &batch);
                 }
                 if do_save_boot {
                     let _ = save_boot_state(&dev);

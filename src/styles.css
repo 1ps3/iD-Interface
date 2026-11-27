@@ -8597,7 +8597,434 @@ html.tray-menu-page body {
 
 :root[data-theme="liquidglass"] .modal-card,
 :root[data-theme="liquidglass"] .phase-placeholder {
-  border-radius: 18px;
+  border-radius: 14px;
+}
+
+/* =========================================================================
+   AUTHENTIC APPLE MACOS TAHOE 26 NATIVE PASS (SYSTEM SETTINGS & APPLE MUSIC)
+   - Flat, neutral content canvas (#1e1e1e Dark / #f5f5f7 Light)
+   - Borderless/hairline grouped cards (no glossy gradients, no muddy shadows)
+   - Inset Grouped Lists in Settings (1px horizontal dividers, no nested boxes)
+   - Frosted Liquid Glass reserved for floating capsules, inspector dock & menus
+   - Native macOS NSSegmentedControl, NSPopUpButton & accent-filled active pills
+   ========================================================================= */
+:root[data-theme="liquidglass"] {
+  --bg-shell: #1e1e1e;
+  --bg-canvas: #1e1e1e;
+  --bg-card: #262628;
+  --bg-pod: rgba(34, 34, 36, 0.86);
+  --bg-panel: #2b2b2e;
+  --bg-inset: #212123;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(235, 235, 245, 0.62);
+  --text-muted: rgba(235, 235, 245, 0.42);
+  --double-ring: none;
+}
+
+:root[data-theme="liquidglass"][data-glass-tint="clear"],
+:root[data-theme="liquidglass"][data-glass-tint="tinted"] {
+  --bg-shell: #1e1e1e;
+  --bg-canvas: #1e1e1e;
+  --bg-card: #262628;
+  --bg-pod: rgba(34, 34, 36, 0.88);
+  --bg-panel: #2b2b2e;
+  --bg-inset: #212123;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] {
+  --bg-shell: #f5f5f7;
+  --bg-canvas: #f5f5f7;
+  --bg-card: #ffffff;
+  --bg-pod: rgba(255, 255, 255, 0.92);
+  --bg-panel: #ffffff;
+  --bg-inset: #f0f0f3;
+  --border: rgba(0, 0, 0, 0.075);
+  --border-subtle: rgba(0, 0, 0, 0.055);
+  --border-strong: rgba(0, 0, 0, 0.14);
+  --text-primary: #1d1d1f;
+  --text-secondary: rgba(29, 29, 31, 0.62);
+  --text-muted: rgba(29, 29, 31, 0.44);
+  --double-ring: none;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"][data-glass-tint="clear"],
+:root[data-theme="liquidglass"][data-glass-scheme="light"][data-glass-tint="tinted"] {
+  --bg-shell: #f5f5f7;
+  --bg-canvas: #f5f5f7;
+  --bg-card: #ffffff;
+  --bg-pod: rgba(255, 255, 255, 0.94);
+  --bg-panel: #ffffff;
+  --bg-inset: #f0f0f3;
+}
+
+/* Remove double-border pseudo-elements and glossy gradients on content cards */
+:root[data-theme="liquidglass"] .mixer-pair::after,
+:root[data-theme="liquidglass"] .channel-inspector::after,
+:root[data-theme="liquidglass"] .master-dock::after,
+:root[data-theme="liquidglass"] .preamp-card::after,
+:root[data-theme="liquidglass"] .dsp-panel::after,
+:root[data-theme="liquidglass"] .roomtune-stage::after,
+:root[data-theme="liquidglass"] .monitoring-meters-card::after,
+:root[data-theme="liquidglass"] .routing-card::after,
+:root[data-theme="liquidglass"] .settings-theme-card::after,
+:root[data-theme="liquidglass"] .setting-pill-card::after,
+:root[data-theme="liquidglass"] .settings-col::after {
+  opacity: 0 !important;
+}
+
+/* Flat, crisp Apple content cards (Dark Mode) */
+:root[data-theme="liquidglass"] .mixer-pair,
+:root[data-theme="liquidglass"] .channel-inspector,
+:root[data-theme="liquidglass"] .preamp-card,
+:root[data-theme="liquidglass"] .dsp-panel,
+:root[data-theme="liquidglass"] .roomtune-stage,
+:root[data-theme="liquidglass"] .monitoring-meters-card,
+:root[data-theme="liquidglass"] .routing-card,
+:root[data-theme="liquidglass"] .settings-theme-card,
+:root[data-theme="liquidglass"] .setting-pill-card,
+:root[data-theme="liquidglass"] .settings-col {
+  border-radius: 12px;
+  background-color: var(--bg-card);
+  background-image: none;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Flat, crisp Apple content cards (Light Mode — pure white, hairline border, zero murky shadow) */
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mixer-pair,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .channel-inspector,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .preamp-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .dsp-panel,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .roomtune-stage,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .monitoring-meters-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .routing-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .settings-theme-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .setting-pill-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .settings-col {
+  border-radius: 12px;
+  background-color: #ffffff;
+  background-image: none;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.04);
+}
+
+/* Clean Apple Inspector Sidebar for Master Dock (no pink/green ambient blobs!) */
+:root[data-theme="liquidglass"] .master-dock {
+  border-radius: 14px;
+  background-color: var(--bg-pod);
+  background-image: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  backdrop-filter: blur(28px) saturate(160%);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .master-dock {
+  background-color: #ffffff;
+  background-image: none !important;
+  border: 1px solid rgba(0, 0, 0, 0.075);
+  box-shadow: 0 0.5px 1.5px rgba(0, 0, 0, 0.05);
+}
+
+:root[data-theme="liquidglass"] .dock-section,
+:root[data-theme="liquidglass"] .dock-wave-slot {
+  background-image: none !important;
+}
+
+/* Inner subcards (DSP, Meter Bays, Phys Outputs, RoomTune) — flat subtle elevation */
+:root[data-theme="liquidglass"] .dsp-card,
+:root[data-theme="liquidglass"] .mon-meter-bay,
+:root[data-theme="liquidglass"] .phys-out-item,
+:root[data-theme="liquidglass"] .rt-spk-inspector,
+:root[data-theme="liquidglass"] .rt-prof-trim-inline,
+:root[data-theme="liquidglass"] .rt-eq-panel,
+:root[data-theme="liquidglass"] .rt-profile-card,
+:root[data-theme="liquidglass"] .rt-stage-3d {
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.035);
+  background-image: none;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .dsp-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mon-meter-bay,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .phys-out-item,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .rt-spk-inspector,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .rt-prof-trim-inline,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .rt-eq-panel,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .rt-profile-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .rt-stage-3d {
+  border-radius: 10px;
+  background-color: #f7f7f9;
+  background-image: none;
+  border: 1px solid rgba(0, 0, 0, 0.065);
+  box-shadow: none;
+}
+
+/* Apple System Settings Inset Grouped Lists: eliminate nested boxes-inside-boxes */
+:root[data-theme="liquidglass"] .settings-col {
+  padding: 0;
+  gap: 0;
+}
+
+:root[data-theme="liquidglass"] .settings-col > .dock-title {
+  padding: 12px 14px 8px;
+}
+
+:root[data-theme="liquidglass"] .settings-col > .settings-card-row,
+:root[data-theme="liquidglass"] .settings-col > .settings-card-col {
+  background: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.07) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 10px 14px;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .settings-col > .settings-card-row,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .settings-col > .settings-card-col {
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+:root[data-theme="liquidglass"] .settings-col > .settings-knob-pair {
+  padding: 10px 14px;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .settings-col > .settings-knob-pair {
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme="liquidglass"] .settings-knob-pair .settings-card-row {
+  background: rgba(255, 255, 255, 0.03) !important;
+  background-image: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .settings-knob-pair .settings-card-row {
+  background: #f7f7f9 !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+:root[data-theme="liquidglass"] .theme-wf-item {
+  background: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 6px 12px 6px 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .theme-wf-item {
+  border-right: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+:root[data-theme="liquidglass"] .theme-wf-item:last-child {
+  border-right: none !important;
+  padding-right: 0;
+}
+
+:root[data-theme="liquidglass"] .settings-card-row:hover,
+:root[data-theme="liquidglass"] .setting-pill-card:hover {
+  border-color: rgba(255, 255, 255, 0.09);
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .settings-card-row:hover,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .setting-pill-card:hover {
+  border-color: rgba(0, 0, 0, 0.09);
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.04);
+}
+
+/* Floating Liquid Glass Topbar Nav Capsule — matches Apple Music's Apple Music | Library pill */
+:root[data-theme="liquidglass"] .top-nav-tabs {
+  background: rgba(255, 255, 255, 0.075);
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.16),
+    0 2px 10px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-theme="liquidglass"] .top-nav-tabs .nav-item.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .top-nav-tabs {
+  background: rgba(0, 0, 0, 0.055);
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .top-nav-tabs .nav-item.active {
+  background: #ffffff;
+  color: #1d1d1f;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.11),
+    0 0.5px 1px rgba(0, 0, 0, 0.06);
+}
+
+/* Native macOS NSSegmentedControl (clean recessed track + crisp elevated thumb) */
+:root[data-theme="liquidglass"] .seg-group,
+:root[data-theme="liquidglass"] .bus-tabs,
+:root[data-theme="liquidglass"] .dsp-ch-tabs,
+:root[data-theme="liquidglass"] .insp-tone-top,
+:root[data-theme="liquidglass"] .tone-toggle-row,
+:root[data-theme="liquidglass"] .orbit-btn-row {
+  background: rgba(255, 255, 255, 0.07);
+  border: none;
+  box-shadow: inset 0 0.5px 1px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="liquidglass"] .seg-btn.active,
+:root[data-theme="liquidglass"] .bus-tab.active {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .seg-group,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .bus-tabs,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .dsp-ch-tabs,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .insp-tone-top,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .tone-toggle-row,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .orbit-btn-row {
+  background: rgba(0, 0, 0, 0.055);
+  border: none;
+  box-shadow: inset 0 0.5px 1px rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .seg-btn.active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .bus-tab.active {
+  background: #ffffff;
+  color: #1d1d1f;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.12),
+    0 0.5px 1px rgba(0, 0, 0, 0.06);
+}
+
+/* Native macOS NSPopUpButton (clean, subtle 7px rounded pill) */
+:root[data-theme="liquidglass"] .dock-select,
+:root[data-theme="liquidglass"] .insp-ch-select {
+  border-radius: 7px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"] .dock-select:hover,
+:root[data-theme="liquidglass"] .insp-ch-select:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .dock-select,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .insp-ch-select {
+  border-radius: 7px;
+  background-color: #ffffff;
+  border: 0.5px solid rgba(0, 0, 0, 0.14);
+  color: #1d1d1f;
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .dock-select:hover,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .insp-ch-select:hover {
+  background-color: #fafafa;
+  border-color: rgba(0, 0, 0, 0.22);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* Native macOS Push & Toggle Buttons (no glossy gradients, vibrant macOS accent when active) */
+:root[data-theme="liquidglass"] .action-btn,
+:root[data-theme="liquidglass"] .mon-btn,
+:root[data-theme="liquidglass"] .ms-btn,
+:root[data-theme="liquidglass"] .mini-pill-btn,
+:root[data-theme="liquidglass"] .link-pill {
+  background-color: rgba(255, 255, 255, 0.09);
+  background-image: none;
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"] .action-btn:hover:not(.active),
+:root[data-theme="liquidglass"] .mon-btn:hover:not(.active),
+:root[data-theme="liquidglass"] .ms-btn:hover:not(.active),
+:root[data-theme="liquidglass"] .mini-pill-btn:hover:not(.active),
+:root[data-theme="liquidglass"] .link-pill:hover:not(.active) {
+  background-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .action-btn,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mon-btn,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .ms-btn,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-pill-btn,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .link-pill {
+  background-color: rgba(0, 0, 0, 0.05);
+  background-image: none;
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+  color: #1d1d1f;
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.03);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .action-btn:hover:not(.active),
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mon-btn:hover:not(.active),
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .ms-btn:hover:not(.active),
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-pill-btn:hover:not(.active),
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .link-pill:hover:not(.active) {
+  background-color: rgba(0, 0, 0, 0.09);
+  border-color: rgba(0, 0, 0, 0.13);
+  box-shadow: none;
+}
+
+/* Vibrant Apple accent fill on active monitor/action toggles (matches Apple Music's orange Repeat/Shuffle) */
+:root[data-theme="liquidglass"] .mon-btn.active:not(.danger-active):not(.solo-btn),
+:root[data-theme="liquidglass"] .action-btn.active:not(.danger-btn),
+:root[data-theme="liquidglass"] .mini-pill-btn.active:not(.danger-active):not(.solo-pill):not(.green-active) {
+  background: var(--mac-accent, #0a84ff);
+  background-image: none;
+  border-color: transparent;
+  color: var(--mac-accent-fg, #ffffff);
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mon-btn.active:not(.danger-active):not(.solo-btn),
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .action-btn.active:not(.danger-btn),
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-pill-btn.active:not(.danger-active):not(.solo-pill):not(.green-active) {
+  background: var(--mac-accent, #007aff);
+  background-image: none;
+  border-color: transparent;
+  color: var(--mac-accent-fg, #ffffff);
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"] .telemetry-pill,
+:root[data-theme="liquidglass"] .brand-model {
+  background: rgba(255, 255, 255, 0.075);
+  border: 0.5px solid rgba(255, 255, 255, 0.11);
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .telemetry-pill,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .brand-model {
+  background: rgba(0, 0, 0, 0.05);
+  border: 0.5px solid rgba(0, 0, 0, 0.07);
+  color: #1d1d1f;
+  box-shadow: none;
 }
 
 /* =========================================================================

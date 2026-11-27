@@ -1453,10 +1453,6 @@ pub fn build_direct_context(
         let _ = dev.set_asio_buffer_size(buf_size as u32);
     }
 
-    // Arm the physical Function button in hardware on every connect so it works immediately
-    // even after a fresh power cycle without Audient Device Manager.
-    write_fn_key_mode(dev, settings.fn_key_mode, custom_fn_active);
-
     let dsp_editable = sr <= 96000;
 
     // First-time Direct USB launch: seed pro monitor defaults onto hardware where appropriate
@@ -2265,8 +2261,11 @@ pub fn build_direct_context(
     let _ = dev_p;
     let tree = node("Node", vec![], vec![node("Devices", vec![], vec![device_node])]);
 
-    // Finish host-online handshake so hardware event notifications are active
+    // Finish host-online handshake so hardware event notifications are active,
+    // then arm the physical Function button in hardware so it works immediately
+    // even after a fresh power cycle without Audient Device Manager.
     let _ = dev.vendor_out(BREQ_PARAM, ENT_SYSTEM, 0x0C00, &[1]);
+    write_fn_key_mode(dev, settings.fn_key_mode, custom_fn_active);
 
     let mut ctx = DirectContext {
         tree,
