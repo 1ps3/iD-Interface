@@ -3549,6 +3549,83 @@ fn ensure_audient_device_manager_running() {
     }
 }
 
+#[cfg(target_os = "macos")]
+fn macos_tray_template_icon() -> tauri::image::Image<'static> {
+    // 44x44 (@2x Retina = 22pt) monochrome alpha-only silhouette of the iD rotary knob:
+    // 270° outer meter arc + inner knob ring + angled indicator line.
+    // Marked as a macOS template image (`icon_as_template(true)`), so macOS automatically
+    // tints it flat white on Dark Mode menu bars and flat dark on Light Mode menu bars.
+    const SIZE: usize = 44;
+    let cx = 22.0_f32;
+    let cy = 22.5_f32;
+
+    let arc_r = 16.5_f32;
+    let arc_hw = 1.85_f32;
+    let gap_start = 48.0_f32.to_radians();  // ~4:30 o'clock (screen +y down)
+    let gap_end = 132.0_f32.to_radians();   // ~7:30 o'clock
+    let cap1_x = cx + arc_r * gap_start.cos();
+    let cap1_y = cy + arc_r * gap_start.sin();
+    let cap2_x = cx + arc_r * gap_end.cos();
+    let cap2_y = cy + arc_r * gap_end.sin();
+
+    let ring_r = 9.4_f32;
+    let ring_hw = 1.65_f32;
+
+    // Indicator pointer at -28° (~2 o'clock), matching the iD app icon
+    let ptr_ang = (-28.0_f32).to_radians();
+    let px0 = cx + 2.2 * ptr_ang.cos();
+    let py0 = cy + 2.2 * ptr_ang.sin();
+    let px1 = cx + 8.6 * ptr_ang.cos();
+    let py1 = cy + 8.6 * ptr_ang.sin();
+    let ptr_hw = 1.55_f32;
+    let seg_dx = px1 - px0;
+    let seg_dy = py1 - py0;
+    let seg_len_sq = seg_dx * seg_dx + seg_dy * seg_dy;
+
+    let mut rgba = vec![0u8; SIZE * SIZE * 4];
+    for y in 0..SIZE {
+        for x in 0..SIZE {
+            let mut hits = 0u32;
+            // 4x4 supersampling for crisp Retina anti-aliasing
+            for sy in 0..4 {
+                let fy = (y as f32) + (sy as f32 + 0.5) * 0.25;
+                let dy = fy - cy;
+                for sx in 0..4 {
+                    let fx = (x as f32) + (sx as f32 + 0.5) * 0.25;
+                    let dx = fx - cx;
+                    let r = (dx * dx + dy * dy).sqrt();
+                    let ang = dy.atan2(dx);
+
+                    // 1. Outer 270° arc with rounded endcaps
+                    let on_arc = ((r - arc_r).abs() <= arc_hw && !(ang > gap_start && ang < gap_end))
+                        || ((fx - cap1_x).hypot(fy - cap1_y) <= arc_hw)
+                        || ((fx - cap2_x).hypot(fy - cap2_y) <= arc_hw);
+
+                    // 2. Inner rotary knob ring
+                    let on_ring = (r - ring_r).abs() <= ring_hw;
+
+                    // 3. Rounded indicator pointer inside knob
+                    let t = (((fx - px0) * seg_dx + (fy - py0) * seg_dy) / seg_len_sq).clamp(0.0, 1.0);
+                    let on_ptr = (fx - (px0 + t * seg_dx)).hypot(fy - (py0 + t * seg_dy)) <= ptr_hw;
+
+                    if on_arc || on_ring || on_ptr {
+                        hits += 1;
+                    }
+                }
+            }
+            if hits > 0 {
+                let alpha = ((hits * 255 + 8) / 16).min(255) as u8;
+                let idx = (y * SIZE + x) * 4;
+                rgba[idx] = 0;
+                rgba[idx + 1] = 0;
+                rgba[idx + 2] = 0;
+                rgba[idx + 3] = alpha;
+            }
+        }
+    }
+    tauri::image::Image::new_owned(rgba, SIZE as u32, SIZE as u32)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
@@ -3743,6 +3820,13 @@ pub fn run() {
                     _ => {}
                 });
 
+            #[cfg(target_os = "macos")]
+            {
+                tray_builder = tray_builder
+                    .icon(macos_tray_template_icon())
+                    .icon_as_template(true);
+            }
+            #[cfg(not(target_os = "macos"))]
             if let Some(icon) = app.default_window_icon().cloned() {
                 tray_builder = tray_builder.icon(icon);
             }
