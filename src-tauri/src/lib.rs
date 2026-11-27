@@ -176,6 +176,8 @@ struct AdmStore {
     prev_main_vol_before_ref: Option<f64>,
     last_fn_active: Option<bool>,
     last_fn_scene_trigger: Option<std::time::Instant>,
+    /// (device serial, last live Direct USB tree) stashed on unplug so a hot-plug can restore the session
+    last_direct_tree: Option<(String, ValueTreeNode)>,
     custom_fn_mode: CustomFnMode,
     config: PersistedConfig,
     startup_restored: bool,
@@ -221,6 +223,7 @@ impl AdmStore {
             prev_main_vol_before_ref: None,
             last_fn_active: None,
             last_fn_scene_trigger: None,
+            last_direct_tree: None,
             custom_fn_mode,
             config: cfg,
             startup_restored: false,
@@ -2840,6 +2843,7 @@ async fn run_direct_usb_session(
                         }
                     }
                     if let Some((mode, custom)) = pending_fn_mode {
+                        ctx.custom_fn_active = custom;
                         write_fn_key_mode(&ready_dev, mode, custom);
                     }
                     if let Some(ref tree_snap) = latest_tree {
@@ -2967,6 +2971,7 @@ async fn run_direct_usb_session(
                     }
                 }
                 if let Some((mode, custom)) = pending_fn_mode {
+                    ctx.custom_fn_active = custom;
                     write_fn_key_mode(&dev, mode, custom);
                 }
                 if let Some(ref tree_snap) = latest_tree {
@@ -3057,16 +3062,44 @@ async fn run_direct_usb_session(
                 let Some(ev) = ev else { break };
                 match ev {
                     UsbEvent::Connected { tree, device_name, serial } => {
-                        let (snapshot, current_db) = {
+                        let (snapshot, current_db, restore_tree, restore_cmds) = {
                             let mut st = store.lock().await;
                             st.connected = true;
+                            let prev = st.last_direct_tree.take();
                             st.load_tree(tree);
+                            // Hot-plug: the iD2 rebooted into its flash Boot State, so push the
+                            // app's last live session back onto the hardware (never 48V / volumes).
+                            let mut restore_cmds: Vec<(Vec<usize>, JuceVar)> = Vec::new();
+                            if let Some((prev_serial, prev_tree)) = prev {
+                                if prev_serial == serial {
+                                    let mut skip = vec![st.hp1_vol_path.clone()];
+                                    if let Some(mv) = st.main_vol_path.clone() {
+                                        skip.push(mv);
+                                    }
+                                    if let Some(root) = st.root.as_ref() {
+                                        restore_cmds = direct_usb::collect_hotplug_restore(root, &prev_tree, &skip);
+                                    }
+                                    if let Some(root) = st.root.as_mut() {
+                                        for (p, v) in &restore_cmds {
+                                            if let Some(n) = root.get_path_mut(p) {
+                                                n.props.insert("value".into(), v.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             if !st.config.direct_usb.initialized {
                                 st.config.direct_usb.initialized = true;
                                 st.save_current_config();
                             }
-                            (st.snapshot(), st.current_db)
+                            let restore_tree = if restore_cmds.is_empty() { None } else { st.root.clone() };
+                            (st.snapshot(), st.current_db, restore_tree, restore_cmds)
                         };
+                        if let Some(ref t) = restore_tree {
+                            for (p, v) in restore_cmds {
+                                let _ = usb_cmd_tx.send(UsbCmd::SetParam(p, v, t.clone()));
+                            }
+                        }
                         let info = {
                             let mut bi = backend_info.lock().await;
                             bi.active_engine = "direct_usb".into();
@@ -3102,6 +3135,10 @@ async fn run_direct_usb_session(
                                         }
                                     }
                                 }
+                            }
+                            // Remember sample rates chosen externally (DAW / OS sound settings) too
+                            if is_sr {
+                                st.record_engine_setting(&path, &value);
                             }
 
                             // Intercept physical Function button (ent=0x04 cs=0x0E -> FnActive)
@@ -3182,6 +3219,17 @@ async fn run_direct_usb_session(
                         let _ = app.emit("meter-frame", &mf);
                     }
                     UsbEvent::Disconnected => {
+                        let serial = backend_info.lock().await.serial.clone();
+                        {
+                            let mut st = store.lock().await;
+                            if let Some(root) = st.root.clone() {
+                                st.last_direct_tree = Some((serial, root));
+                            }
+                            // Hand the worker the latest saved settings before it rebuilds on reconnect
+                            if let Ok(mut g) = live_settings.lock() {
+                                *g = st.config.direct_usb.clone();
+                            }
+                        }
                         emit_disconnected(app, store).await;
                     }
                 }

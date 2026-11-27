@@ -317,6 +317,11 @@ pub struct DirectContext {
     pub last_watched: HashMap<HwRegKey, i32>,
     /// Round-robin cursor so front-panel fallback polling never stalls the 60 Hz meter loop
     pub panel_cursor: usize,
+    /// Whether a Custom Studio Action currently owns the hardware Function button binding
+    pub custom_fn_active: bool,
+    /// Saved sample rate to re-assert for a few seconds after connect, so the OS audio stack
+    /// (Windows / CoreAudio) re-enumerating the device can't silently override the user's choice
+    pub sr_guard: Option<(u32, std::time::Instant)>,
     /// Per-bus, per-src live channel state `(vol, pan, mute)`
     pub mixer_ch_paths: HashMap<(u8, u8), MixerChPaths>,
     /// Per-input-channel DSP paths for recomputing SVF filters cleanly
@@ -1206,6 +1211,14 @@ fn hw_get_u8(dev: &TusbDevice<'_>, ent: u8, cs: u8, ch: u8, default: u8) -> u8 {
         .unwrap_or(default)
 }
 
+/// Like `hw_get_q88`, but distinguishes a failed/short read (device still booting) from a real value.
+fn hw_try_q88(dev: &TusbDevice<'_>, ent: u8, cs: u8, ch: u8) -> Option<f64> {
+    dev.vendor_in(BREQ_PARAM, ent, ((cs as u16) << 8) | (ch as u16), 2)
+        .ok()
+        .filter(|b| b.len() >= 2)
+        .map(|b| q88_to_db(&b))
+}
+
 fn hw_get_q88(dev: &TusbDevice<'_>, ent: u8, cs: u8, ch: u8, default: f64) -> f64 {
     dev.vendor_in(BREQ_PARAM, ent, ((cs as u16) << 8) | (ch as u16), 2)
         .ok()
@@ -2075,6 +2088,7 @@ pub fn build_direct_context(
     let num_pairs = (total_sources + 1) / 2;
 
     let mut mix_children: Vec<ValueTreeNode> = Vec::new();
+    let mut unsynced_mixer: Vec<(u8, u8)> = Vec::new();
     let bus_names = ["Main Mix", "Mix A", "Mix B", "Reverb"];
     for bus in 0..4u8 {
         let bus_p = [mixer_p.as_slice(), &[bus as usize]].concat();
@@ -2091,14 +2105,24 @@ pub fn build_direct_context(
             let src0 = (pair * 2) as u8;
             let src1 = (pair * 2 + 1) as u8;
 
-            let (hw_v0, hw_p0) = crosspoints_to_vol_pan(
-                hw_get_q88(dev, ENT_MIXER, cs_l, src0, -128.0),
-                hw_get_q88(dev, ENT_MIXER, cs_r, src0, -128.0),
-            );
-            let (hw_v1, hw_p1) = crosspoints_to_vol_pan(
-                hw_get_q88(dev, ENT_MIXER, cs_l, src1, -128.0),
-                hw_get_q88(dev, ENT_MIXER, cs_r, src1, -128.0),
-            );
+            // Retry crosspoint reads briefly: right after a hot-plug the iD2 can NAK reads while it
+            // finishes booting, and a failed read must never be mistaken for a real -inf fader.
+            let read_xp = |src: u8| -> Option<(f64, i32)> {
+                for attempt in 0..3 {
+                    if let (Some(l), Some(r)) = (
+                        hw_try_q88(dev, ENT_MIXER, cs_l, src),
+                        hw_try_q88(dev, ENT_MIXER, cs_r, src),
+                    ) {
+                        return Some(crosspoints_to_vol_pan(l, r));
+                    }
+                    if attempt < 2 {
+                        std::thread::sleep(std::time::Duration::from_millis(25));
+                    }
+                }
+                None
+            };
+            let xp0 = read_xp(src0);
+            let xp1 = read_xp(src1);
             let is_reverb_pair = pair == num_pairs - 1;
             let is_host_pair = !is_reverb_pair && (src0 >= total_inputs);
             let stereo_default = if is_host_pair || is_reverb_pair { 1 } else { 0 };
@@ -2112,9 +2136,21 @@ pub fn build_direct_context(
             let ch0_name = if is_reverb_pair { "Reverb L".into() } else { format!("Ch {}", src0 + 1) };
             let ch1_name = if is_reverb_pair { "Reverb R".into() } else { format!("Ch {}", src1 + 1) };
 
-            let restore_ch = |src: u8, hw_v: f64, hw_p: i32| -> (f64, i32, i32) {
+            let mut restore_ch = |src: u8, hw: Option<(f64, i32)>| -> (f64, i32, i32) {
                 let key = format!("{bus}:{src}");
                 let saved_m = settings.mixer_mutes.get(&key).copied();
+                let Some((hw_v, hw_p)) = hw else {
+                    // Unreadable: fall back to the last saved session and push it to hardware after build
+                    unsynced_mixer.push((bus, src));
+                    let m = saved_m.unwrap_or(if bus == 3 { 1 } else { 0 });
+                    let v = settings
+                        .mixer_vols
+                        .get(&key)
+                        .copied()
+                        .unwrap_or(if bus == 3 { -12.0 } else { 0.0 });
+                    let p = settings.mixer_pans.get(&key).copied().unwrap_or(0);
+                    return (v, p, m);
+                };
                 if hw_v > -127.5 {
                     (hw_v, hw_p, 0)
                 } else if saved_m == Some(1) {
@@ -2131,8 +2167,8 @@ pub fn build_direct_context(
                     (-128.0, p, m)
                 }
             };
-            let (v0, p0, m0) = restore_ch(src0, hw_v0, hw_p0);
-            let (v1, p1, m1) = restore_ch(src1, hw_v1, hw_p1);
+            let (v0, p0, m0) = restore_ch(src0, xp0);
+            let (v1, p1, m1) = restore_ch(src1, xp1);
 
             let pair_node = node(
                 "Pair",
@@ -2277,9 +2313,24 @@ pub fn build_direct_context(
         hw_to_path,
         last_watched: HashMap::new(),
         panel_cursor: 0,
+        custom_fn_active,
+        sr_guard: settings
+            .sample_rate
+            .filter(|s| *s > 0)
+            .map(|s| (s as u32, std::time::Instant::now() + std::time::Duration::from_secs(6))),
         mixer_ch_paths,
         input_dsp_paths,
     };
+    // Push any mixer channels we couldn't read back onto hardware so UI and audio always agree
+    if !unsynced_mixer.is_empty() {
+        let tree_snap = ctx.tree.clone();
+        for (bus, src) in unsynced_mixer {
+            if let Some(vol_p) = ctx.mixer_ch_paths.get(&(bus, src)).map(|p| p.vol.clone()) {
+                let v = tree_f64(&tree_snap, &vol_p, -128.0);
+                write_param_to_hardware(dev, &mut ctx, &tree_snap, &vol_p, &JuceVar::Double(v));
+            }
+        }
+    }
     // Seed watched front-panel registers with initial hardware values
     let _ = poll_watched_front_panel(dev, &mut ctx, true);
     ctx
@@ -2413,6 +2464,7 @@ pub fn write_param_to_hardware(
             if let Some(sr) = value.as_i64() {
                 let _ = dev.set_sample_rate(sr as u32);
                 ctx.sample_rate = sr as u32;
+                ctx.sr_guard = ctx.sr_guard.map(|(_, until)| (sr as u32, until));
             }
         }
         HwBinding::ClockSource => {
@@ -2686,7 +2738,7 @@ pub fn write_param_to_hardware(
         }
         HwBinding::FnKeyMode => {
             if let Some(v) = value.as_i64() {
-                write_fn_key_mode(dev, v as i32, false);
+                write_fn_key_mode(dev, v as i32, ctx.custom_fn_active);
             }
         }
     }
@@ -2769,6 +2821,9 @@ pub fn poll_watched_front_panel(
             // Also detect external sample rate changes (e.g. DAW / Windows Sound Settings)
             if let Some(live_sr) = dev.get_sample_rate() {
                 if live_sr > 0 && live_sr != ctx.sample_rate {
+                    if sr_guard_reassert(dev, ctx, live_sr) {
+                        continue;
+                    }
                     ctx.sample_rate = live_sr;
                     if !seed_only {
                         if let Some(sr_path) = ctx.hw_to_path.get(&HwRegKey { entity: ENT_SYSTEM, cs: 0x02, ch: 0 }) {
@@ -2826,6 +2881,15 @@ pub fn poll_hardware_events(
                             .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
                     })
                     .unwrap_or(ctx.sample_rate);
+                if live_sr != ctx.sample_rate {
+                    if let Some((want, until)) = ctx.sr_guard {
+                        if std::time::Instant::now() < until && live_sr != want {
+                            let _ = dev.set_sample_rate(want);
+                            ctx.sample_rate = want;
+                            continue;
+                        }
+                    }
+                }
                 ctx.sample_rate = live_sr;
                 JuceVar::Int(live_sr as i32)
             }
@@ -2845,6 +2909,73 @@ pub fn poll_hardware_events(
         updates.push((path.clone(), new_val));
     }
     Ok(updates)
+}
+
+/// During the post-connect grace window, re-apply the user's saved sample rate if the OS audio
+/// stack changed it while re-enumerating the device. Returns `true` if the change was suppressed.
+fn sr_guard_reassert(dev: &TusbDevice<'_>, ctx: &mut DirectContext, live_sr: u32) -> bool {
+    let Some((want, until)) = ctx.sr_guard else {
+        return false;
+    };
+    if std::time::Instant::now() >= until {
+        ctx.sr_guard = None;
+        return false;
+    }
+    if live_sr != want {
+        let _ = dev.set_sample_rate(want);
+        ctx.sample_rate = want;
+        return true;
+    }
+    false
+}
+
+/// After a USB hot-plug (the iD MK3 power-cycles and reboots into its flash Boot State), collect
+/// every parameter whose value differs from the app's last known live state so the session can be
+/// restored exactly. Never restores 48V (phantom power), momentary triggers, SmartGain state,
+/// engine settings handled separately (SR / Buffer / Clock), or any path listed in `skip`.
+pub fn collect_hotplug_restore(
+    new_tree: &ValueTreeNode,
+    prev_tree: &ValueTreeNode,
+    skip: &[Vec<usize>],
+) -> Vec<(Vec<usize>, JuceVar)> {
+    const SKIP_NAMES: [&str; 11] = [
+        "48V", "FnActive", "FnKeyModeSt", "SetToRef", "SR", "BufferSize", "CurClkSrc",
+        "CurProfile", "Status", "Trigger", "Armed",
+    ];
+
+    fn walk(
+        a: &ValueTreeNode,
+        b: &ValueTreeNode,
+        path: &mut Vec<usize>,
+        skip: &[Vec<usize>],
+        out: &mut Vec<(Vec<usize>, JuceVar)>,
+    ) {
+        if a.tag != b.tag || a.children.len() != b.children.len() {
+            return;
+        }
+        if a.tag == "param" {
+            let name = a.props.get("name").and_then(|v| v.as_str()).unwrap_or("");
+            if SKIP_NAMES.contains(&name) || skip.iter().any(|s| s == path) {
+                return;
+            }
+            if let (Some(av), Some(bv)) = (a.props.get("value"), b.props.get("value")) {
+                if av.to_json() != bv.to_json() {
+                    out.push((path.clone(), bv.clone()));
+                }
+            }
+            return;
+        }
+        for i in 0..a.children.len() {
+            path.push(i);
+            walk(&a.children[i], &b.children[i], path, skip, out);
+            path.pop();
+        }
+    }
+
+    let mut out = Vec::new();
+    let mut path = Vec::new();
+    walk(new_tree, prev_tree, &mut path, skip, &mut out);
+    out
 }
 
 /// Update `editable` on all DSP parameters (EQ, Compressor, DspOrder, RecSrc, Reverb)
