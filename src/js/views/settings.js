@@ -56,7 +56,7 @@ export function createSettingsView(container, store, callbacks = {}) {
   let bootMsgTimer = null;
   let isMacOS = /Mac|Macintosh|MacIntel/i.test(navigator.platform || navigator.userAgent || "");
   let appVersion = "0.1.0";
-  let activeEngine = isMacOS ? "adm" : "direct_usb";
+  let activeEngine = "direct_usb";
   let lastUpdateCheck = null;
 
   const getClosePrefKey = () => (isMacOS ? "closeActionMac" : "closeActionWin");
@@ -847,6 +847,17 @@ export function createSettingsView(container, store, callbacks = {}) {
 
     syncPlatformSettingsUi();
   }
+
+  window.__TAURI__?.event?.listen("backend-info", (e) => {
+    const info = e.payload;
+    if (!info) return;
+    if (info.platform) isMacOS = info.platform === "macos";
+    if (info.appVersion) appVersion = info.appVersion;
+    if (info.activeEngine && info.activeEngine !== activeEngine) {
+      activeEngine = info.activeEngine;
+      rebuild();
+    }
+  });
 
   window.addEventListener("close-action-changed", (e) => {
     const cur = e.detail ?? getSavedCloseAction();

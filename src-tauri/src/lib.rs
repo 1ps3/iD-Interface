@@ -167,6 +167,9 @@ struct AdmStore {
     hp1_mute_path: Option<Vec<usize>>,
     main_mute_path: Option<Vec<usize>>,
     main_vol_path: Option<Vec<usize>>,
+    dim_path: Option<Vec<usize>>,
+    mono_path: Option<Vec<usize>>,
+    speaker_sel_path: Option<Vec<usize>>,
     mid_side_path: Option<Vec<usize>>,
     global_mute_path: Option<Vec<usize>>,
     dsp_bypass_paths: Vec<Vec<usize>>,
@@ -209,6 +212,9 @@ impl AdmStore {
             hp1_mute_path: None,
             main_mute_path: None,
             main_vol_path: None,
+            dim_path: None,
+            mono_path: None,
+            speaker_sel_path: None,
             mid_side_path: None,
             global_mute_path: None,
             dsp_bypass_paths: Vec::new(),
@@ -626,6 +632,40 @@ impl AdmStore {
         (cmds, scene_toggle)
     }
 
+    fn apply_standard_fn_trigger(&mut self, active: bool) -> Vec<(Vec<usize>, JuceVar)> {
+        let mut cmds: Vec<(Vec<usize>, JuceVar)> = Vec::new();
+        let bit = if active { 1 } else { 0 };
+        let fn_mode = self.get_int_val(&self.fn_mode_path);
+
+        let mut set_val = |root: &mut Option<ValueTreeNode>, path_opt: Option<Vec<usize>>, val: JuceVar| {
+            if let Some(tp) = path_opt {
+                if let Some(r) = root.as_mut() {
+                    if let Some(n) = r.get_path_mut(&tp) {
+                        n.props.insert("value".into(), val.clone());
+                    }
+                }
+                cmds.push((tp, val));
+            }
+        };
+
+        // Matches VMs lookup 4: 0=Off, 1=Dim, 2=Alt Speaker, 3=Talkback, 4=Mono, 5=Polarity, 6=Main Mute, 7=RoomTune
+        match fn_mode {
+            1 => set_val(&mut self.root, self.dim_path.clone(), JuceVar::Int(bit)),
+            2 => set_val(&mut self.root, self.speaker_sel_path.clone(), JuceVar::Int(bit)),
+            3 => set_val(&mut self.root, self.talkback_path.clone(), JuceVar::Int(bit)),
+            4 => set_val(&mut self.root, self.mono_path.clone(), JuceVar::Int(bit)),
+            5 => set_val(&mut self.root, self.mid_side_path.clone(), JuceVar::Int(bit)),
+            6 => set_val(&mut self.root, self.main_mute_path.clone(), JuceVar::Int(bit)),
+            7 => set_val(&mut self.root, self.room_byps_path.clone(), JuceVar::Int(if active { 0 } else { 1 })),
+            _ => {}
+        }
+
+        for (tp, val) in &cmds {
+            self.record_engine_setting(tp, val);
+        }
+        cmds
+    }
+
     fn build_startup_restore_cmds(&mut self) -> Vec<OutboundPropertyChange> {
         if self.startup_restored {
             return Vec::new();
@@ -701,6 +741,9 @@ impl AdmStore {
         self.hp1_mute_path = None;
         self.main_mute_path = None;
         self.main_vol_path = None;
+        self.dim_path = None;
+        self.mono_path = None;
+        self.speaker_sel_path = None;
         self.mid_side_path = None;
         self.global_mute_path = None;
         self.dsp_bypass_paths.clear();
@@ -763,6 +806,8 @@ impl AdmStore {
                             self.ref_vol_path = find_param_path(&tree, &mc_path, "RefVol");
                             self.main_vol_path = find_param_path(&tree, &mc_path, "Vol");
                             self.main_mute_path = find_param_path(&tree, &mc_path, "Mute");
+                            self.dim_path = find_param_path(&tree, &mc_path, "Dim");
+                            self.mono_path = find_param_path(&tree, &mc_path, "mono");
                             self.mid_side_path = find_param_path(&tree, &mc_path, "midSide");
                             if let Some(mc_node) = tree.get_path(&mc_path) {
                                 if let Some(hp_idx) = find_child_idx(mc_node, |c| {
@@ -780,6 +825,21 @@ impl AdmStore {
                                     rc_path.push(rc_idx);
                                     self.room_byps_path =
                                         find_param_path(&tree, &rc_path, "byps");
+                                }
+                            }
+                        }
+                        if let Some(r_idx) = find_child_idx(state_node, |c| c.tag == "Routers") {
+                            let mut r_path = state_path.clone();
+                            r_path.push(r_idx);
+                            if let Some(r_node) = tree.get_path(&r_path) {
+                                if let Some(or_idx) = find_child_idx(r_node, |c| {
+                                    c.tag == "Router"
+                                        && c.props.get("name").and_then(|v| v.as_str())
+                                            == Some("Output Router")
+                                }) {
+                                    let mut or_path = r_path.clone();
+                                    or_path.push(or_idx);
+                                    self.speaker_sel_path = find_param_path(&tree, &or_path, "Src");
                                 }
                             }
                         }
@@ -2773,6 +2833,7 @@ async fn run_direct_usb_session(
                     .map(|g| g.clone())
                     .unwrap_or_default();
                 let mut ctx = build_direct_context(&ready_dev, &snap_settings);
+                let _ = poll_watched_front_panel(&ready_dev, &mut ctx, true);
                 if let Ok(mut g) = worker_live_settings.lock() {
                     g.initialized = true;
                 }
@@ -2884,6 +2945,7 @@ async fn run_direct_usb_session(
                 .map(|g| g.clone())
                 .unwrap_or_default();
             let mut ctx = build_direct_context(&dev, &snap_settings);
+            let _ = poll_watched_front_panel(&dev, &mut ctx, true);
             if let Ok(mut g) = worker_live_settings.lock() {
                 g.initialized = true;
             }
@@ -3044,17 +3106,21 @@ async fn run_direct_usb_session(
                                 }
                             }
 
-                            // Intercept physical Function button (ent=0x04 cs=0x0E -> FnActive) for Custom Studio Actions
-                            if st.custom_fn_mode != CustomFnMode::None
-                                && st.fn_active_path.as_ref() == Some(&path)
-                            {
+                            // Intercept physical Function button (ent=0x04 cs=0x0E -> FnActive)
+                            // for both Standard Function modes and Custom Studio Actions
+                            if st.fn_active_path.as_ref() == Some(&path) {
                                 if let Some(active_raw) = value.as_i64() {
                                     let active = active_raw != 0;
                                     if st.last_fn_active != Some(active) {
                                         st.last_fn_active = Some(active);
-                                        let (cmds, sc) = st.apply_custom_fn_trigger(active);
-                                        auto_cmds.extend(cmds);
-                                        scene_toggle = sc;
+                                        if st.custom_fn_mode != CustomFnMode::None {
+                                            let (cmds, sc) = st.apply_custom_fn_trigger(active);
+                                            auto_cmds.extend(cmds);
+                                            scene_toggle = sc;
+                                        } else {
+                                            let cmds = st.apply_standard_fn_trigger(active);
+                                            auto_cmds.extend(cmds);
+                                        }
                                     }
                                 }
                             }
