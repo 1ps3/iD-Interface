@@ -5,9 +5,18 @@
 #include <IOKit/IOKitLib.h>
 #include <IOKit/usb/IOUSBLib.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #define AUDIENT_VID 0x2708
+
+static void usb_log(const char *msg, int code) {
+    FILE *f = fopen("/tmp/id-interface-usb.log", "a");
+    if (!f) return;
+    fprintf(f, "[pid=%d] %s (0x%08x)\n", (int)getpid(), msg, (unsigned int)code);
+    fclose(f);
+}
 
 static int is_supported_mk3_pid(int pid) {
     return pid == 0x0014 || pid == 0x0015 || pid == 0x0016 || pid == 0x0018;
@@ -57,14 +66,23 @@ static int probe_device_awake(IOUSBDeviceInterface182 **dev) {
     req.pData = (void *)buf;
     req.noDataTimeout = 500;
     req.completionTimeout = 500;
-    if ((*dev)->DeviceRequestTO(dev, &req) == KERN_SUCCESS) {
+    kern_return_t kr = (*dev)->DeviceRequestTO(dev, &req);
+    if (kr == KERN_SUCCESS) {
+        usb_log("probe 0x0200 OK", 0);
         return 1;
     }
+    usb_log("probe 0x0200 failed", (int)kr);
     /* Fallback probe: Main Monitor Vol (ENT_MONITOR 0x04, cs 0x0A) */
     req.wValue = 0x0A00;
     req.wIndex = 0x0400;
     req.wLength = 2;
-    return ((*dev)->DeviceRequestTO(dev, &req) == KERN_SUCCESS) ? 1 : 0;
+    kr = (*dev)->DeviceRequestTO(dev, &req);
+    if (kr == KERN_SUCCESS) {
+        usb_log("probe 0x0A00 OK", 0);
+        return 1;
+    }
+    usb_log("probe 0x0A00 failed", (int)kr);
+    return 0;
 }
 
 static void *scan_usb_class(const char *class_name, char *out_name, int out_name_len) {

@@ -3470,10 +3470,12 @@ pub fn run() {
     spawn_mdns_browser(addr_tx);
 
     let cmd_tx_loop = cmd_tx.clone();
-    tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            show_main_window(app);
-        }))
+    let builder = tauri::Builder::default();
+    #[cfg(not(target_os = "macos"))]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        show_main_window(app);
+    }));
+    builder
         .invoke_handler(tauri::generate_handler![
             get_adm_status,
             get_backend_info,
