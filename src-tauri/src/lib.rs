@@ -3,8 +3,8 @@ mod valuetree;
 
 use direct_usb::{
     build_direct_context, is_driver_dll_available, load_boot_state, poll_hardware_events,
-    poll_hardware_meters, poll_watched_front_panel, save_boot_state, write_param_batch_to_hardware,
-    BackendInfo, BackendMode, DirectUsbSettings, TusbApi,
+    poll_hardware_meters, poll_watched_front_panel, save_boot_state, write_fn_key_mode,
+    write_param_batch_to_hardware, BackendInfo, BackendMode, DirectUsbSettings, TusbApi,
 };
 use mdns_sd::{ServiceDaemon, ServiceEvent};
 use serde::{Deserialize, Serialize};
@@ -700,14 +700,9 @@ impl AdmStore {
             }
         }
 
-        // In ADM mode, let ADM keep its own engine/monitor settings intact;
-        // only restore our custom Fn hook if enabled.
-        if self.custom_fn_mode != CustomFnMode::None {
-            push_int_if_diff(&mut self.root, &mut cmds, &self.talkback_path, 0);
-            push_int_if_diff(&mut self.root, &mut cmds, &self.fn_mode_path, 7);
-            let byps = if self.custom_fn_is_active() { 0 } else { 1 };
-            push_int_if_diff(&mut self.root, &mut cmds, &self.room_byps_path, byps);
-        }
+        // In ADM mode, let ADM own its engine/monitor & Function button settings completely.
+        // Custom Studio Actions are exclusive to Direct USB mode.
+        let _ = push_int_if_diff;
         cmds
     }
 
@@ -1166,13 +1161,19 @@ async fn set_custom_fn_mode(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    {
+    let fn_key_mode = {
         let mut st = state.store.lock().await;
         st.custom_fn_mode = mode;
         st.config.custom_fn_mode = mode;
         st.save_current_config();
-    }
+        st.config.direct_usb.fn_key_mode
+    };
 
+    let _ = state.cmd_tx.send(OutboundPropertyChange {
+        path: Vec::new(),
+        prop: "__hw_fn_mode".into(),
+        value: JuceVar::Int(if mode != CustomFnMode::None { -1 } else { fn_key_mode }),
+    });
     let _ = app.emit("custom-fn-mode", mode);
     Ok(())
 }
@@ -2776,6 +2777,7 @@ async fn run_direct_usb_session(
 
     enum UsbCmd {
         SetParam(Vec<usize>, JuceVar, ValueTreeNode),
+        SetFnKeyMode(i32, bool),
         SaveBootState,
         LoadBootState,
     }
@@ -2784,10 +2786,14 @@ async fn run_direct_usb_session(
     let (usb_ev_tx, mut usb_ev_rx) = mpsc::unbounded_channel::<UsbEvent>();
     let stop_flag = Arc::new(AtomicBool::new(false));
     let stop_worker = stop_flag.clone();
-    let live_settings = Arc::new(std::sync::Mutex::new(
-        store.lock().await.config.direct_usb.clone(),
-    ));
+    let (init_direct, init_custom_fn) = {
+        let st = store.lock().await;
+        (st.config.direct_usb.clone(), st.custom_fn_mode != CustomFnMode::None)
+    };
+    let live_settings = Arc::new(std::sync::Mutex::new(init_direct));
     let worker_live_settings = live_settings.clone();
+    let live_custom_fn = Arc::new(AtomicBool::new(init_custom_fn));
+    let worker_live_custom_fn = live_custom_fn.clone();
 
     let worker = std::thread::spawn(move || {
         struct ActiveGuard;
@@ -2832,7 +2838,11 @@ async fn run_direct_usb_session(
                     .lock()
                     .map(|g| g.clone())
                     .unwrap_or_default();
-                let mut ctx = build_direct_context(&ready_dev, &snap_settings);
+                let mut ctx = build_direct_context(
+                    &ready_dev,
+                    &snap_settings,
+                    worker_live_custom_fn.load(Ordering::Relaxed),
+                );
                 let _ = poll_watched_front_panel(&ready_dev, &mut ctx, true);
                 if let Ok(mut g) = worker_live_settings.lock() {
                     g.initialized = true;
@@ -2853,18 +2863,23 @@ async fn run_direct_usb_session(
                     let mut batch: BTreeMap<Vec<usize>, JuceVar> = BTreeMap::new();
                     let mut do_save_boot = false;
                     let mut do_load_boot = false;
+                    let mut pending_fn_mode: Option<(i32, bool)> = None;
                     while let Ok(cmd) = usb_cmd_rx.try_recv() {
                         match cmd {
                             UsbCmd::SetParam(path, val, tree_snap) => {
                                 batch.insert(path, val);
                                 latest_tree = Some(tree_snap);
                             }
+                            UsbCmd::SetFnKeyMode(mode, custom) => pending_fn_mode = Some((mode, custom)),
                             UsbCmd::SaveBootState => do_save_boot = true,
                             UsbCmd::LoadBootState => do_load_boot = true,
                         }
                     }
                     if let Some(ref tree_snap) = latest_tree {
                         write_param_batch_to_hardware(&ready_dev, &mut ctx, tree_snap, &batch);
+                    }
+                    if let Some((mode, custom)) = pending_fn_mode {
+                        write_fn_key_mode(&ready_dev, mode, custom);
                     }
                     if do_save_boot {
                         let _ = save_boot_state(&ready_dev);
@@ -2876,7 +2891,12 @@ async fn run_direct_usb_session(
                                 .lock()
                                 .map(|g| g.clone())
                                 .unwrap_or_default();
-                            ctx = build_direct_context(&ready_dev, &reload_settings);
+                            ctx = build_direct_context(
+                                &ready_dev,
+                                &reload_settings,
+                                worker_live_custom_fn.load(Ordering::Relaxed),
+                            );
+                            let _ = poll_watched_front_panel(&ready_dev, &mut ctx, true);
                             let _ = usb_ev_tx.send(UsbEvent::Connected {
                                 tree: ctx.tree.clone(),
                                 device_name: ctx.device_name.clone(),
@@ -2904,7 +2924,7 @@ async fn run_direct_usb_session(
                         }
                     }
 
-                    if now.duration_since(last_panel_poll) >= Duration::from_millis(65) {
+                    if now.duration_since(last_panel_poll) >= Duration::from_millis(32) {
                         last_panel_poll = now;
                         if let Ok(updates) = poll_watched_front_panel(&ready_dev, &mut ctx, false) {
                             for (path, value) in updates {
@@ -2913,7 +2933,7 @@ async fn run_direct_usb_session(
                         }
                     }
 
-                    if now.duration_since(last_meter_poll) >= Duration::from_millis(33) {
+                    if now.duration_since(last_meter_poll) >= Duration::from_millis(16) {
                         last_meter_poll = now;
                         match poll_hardware_meters(&ready_dev) {
                             Ok(mf) => {
@@ -2929,7 +2949,7 @@ async fn run_direct_usb_session(
                         }
                     }
 
-                    std::thread::sleep(Duration::from_millis(5));
+                    std::thread::sleep(Duration::from_millis(2));
                 }
 
                 had_disconnected = true;
@@ -2944,7 +2964,11 @@ async fn run_direct_usb_session(
                 .lock()
                 .map(|g| g.clone())
                 .unwrap_or_default();
-            let mut ctx = build_direct_context(&dev, &snap_settings);
+            let mut ctx = build_direct_context(
+                &dev,
+                &snap_settings,
+                worker_live_custom_fn.load(Ordering::Relaxed),
+            );
             let _ = poll_watched_front_panel(&dev, &mut ctx, true);
             if let Ok(mut g) = worker_live_settings.lock() {
                 g.initialized = true;
@@ -2966,18 +2990,23 @@ async fn run_direct_usb_session(
                 let mut batch: BTreeMap<Vec<usize>, JuceVar> = BTreeMap::new();
                 let mut do_save_boot = false;
                 let mut do_load_boot = false;
+                let mut pending_fn_mode: Option<(i32, bool)> = None;
                 while let Ok(cmd) = usb_cmd_rx.try_recv() {
                     match cmd {
                         UsbCmd::SetParam(path, val, tree_snap) => {
                             batch.insert(path, val);
                             latest_tree = Some(tree_snap);
                         }
+                        UsbCmd::SetFnKeyMode(mode, custom) => pending_fn_mode = Some((mode, custom)),
                         UsbCmd::SaveBootState => do_save_boot = true,
                         UsbCmd::LoadBootState => do_load_boot = true,
                     }
                 }
                 if let Some(ref tree_snap) = latest_tree {
                     write_param_batch_to_hardware(&dev, &mut ctx, tree_snap, &batch);
+                }
+                if let Some((mode, custom)) = pending_fn_mode {
+                    write_fn_key_mode(&dev, mode, custom);
                 }
                 if do_save_boot {
                     let _ = save_boot_state(&dev);
@@ -2989,7 +3018,12 @@ async fn run_direct_usb_session(
                             .lock()
                             .map(|g| g.clone())
                             .unwrap_or_default();
-                        ctx = build_direct_context(&dev, &reload_settings);
+                        ctx = build_direct_context(
+                            &dev,
+                            &reload_settings,
+                            worker_live_custom_fn.load(Ordering::Relaxed),
+                        );
+                        let _ = poll_watched_front_panel(&dev, &mut ctx, true);
                         let _ = usb_ev_tx.send(UsbEvent::Connected {
                             tree: ctx.tree.clone(),
                             device_name: ctx.device_name.clone(),
@@ -3017,7 +3051,7 @@ async fn run_direct_usb_session(
                     }
                 }
 
-                if now.duration_since(last_panel_poll) >= Duration::from_millis(65) {
+                if now.duration_since(last_panel_poll) >= Duration::from_millis(32) {
                     last_panel_poll = now;
                     if let Ok(updates) = poll_watched_front_panel(&dev, &mut ctx, false) {
                         for (path, value) in updates {
@@ -3026,7 +3060,7 @@ async fn run_direct_usb_session(
                     }
                 }
 
-                if now.duration_since(last_meter_poll) >= Duration::from_millis(33) {
+                if now.duration_since(last_meter_poll) >= Duration::from_millis(16) {
                     last_meter_poll = now;
                     match poll_hardware_meters(&dev) {
                         Ok(mf) => {
@@ -3042,7 +3076,7 @@ async fn run_direct_usb_session(
                     }
                 }
 
-                std::thread::sleep(Duration::from_millis(5));
+                std::thread::sleep(Duration::from_millis(2));
             }
 
             had_disconnected = true;
@@ -3201,6 +3235,11 @@ async fn run_direct_usb_session(
                         *g = latest;
                     }
                     let _ = usb_cmd_tx.send(UsbCmd::LoadBootState);
+                } else if cmd.prop == "__hw_fn_mode" {
+                    let raw = cmd.value.as_i64().unwrap_or(0) as i32;
+                    let custom = raw < 0;
+                    live_custom_fn.store(custom, Ordering::Relaxed);
+                    let _ = usb_cmd_tx.send(UsbCmd::SetFnKeyMode(raw.max(0), custom));
                 } else if cmd.prop == "value" {
                     let (tree_opt, sr_ed_updates, latest_direct) = {
                         let mut st = store.lock().await;

@@ -56,7 +56,7 @@ export function createSettingsView(container, store, callbacks = {}) {
   let bootMsgTimer = null;
   let isMacOS = /Mac|Macintosh|MacIntel/i.test(navigator.platform || navigator.userAgent || "");
   let appVersion = "0.1.0";
-  let activeEngine = "direct_usb";
+  let activeEngine = null;
   let lastUpdateCheck = null;
 
   const getClosePrefKey = () => (isMacOS ? "closeActionMac" : "closeActionWin");

@@ -293,6 +293,7 @@ pub enum HwBinding {
         g_path: Vec<usize>,
         q_path: Vec<usize>,
     },
+    FnKeyMode,
 }
 
 /// Reverse lookup key for hardware change events `[cs, ch, 0, entity]`
@@ -314,6 +315,8 @@ pub struct DirectContext {
     pub hw_to_path: HashMap<HwRegKey, Vec<usize>>,
     /// Last known raw hardware values for fast diff-polling of physical knob & front-panel buttons
     pub last_watched: HashMap<HwRegKey, i32>,
+    /// Round-robin cursor so front-panel fallback polling never stalls the 60 Hz meter loop
+    pub panel_cursor: usize,
     /// Per-bus, per-src live channel state `(vol, pan, mute)`
     pub mixer_ch_paths: HashMap<(u8, u8), MixerChPaths>,
     /// Per-input-channel DSP paths for recomputing SVF filters cleanly
@@ -1371,10 +1374,41 @@ pub fn vol_pan_to_crosspoints(vol: f64, pan: i32, muted: bool) -> (f64, f64) {
     }
 }
 
+/// Encode the 4-byte hardware Function button target binding for `ENT_MONITOR (0x04), cs=0x0D`:
+/// `[target_cs, target_ch, target_entity, 0x00]` (entity `0xFF` = unbound/Off).
+/// Standard modes 1..=6 bind directly to native hardware registers (zero latency + synced LED);
+/// RoomTune (7) and Custom Studio Actions bind to `FnActive` (`ENT_MONITOR, cs=0x0E`) so hardware
+/// toggles the LED and fires `FnActive` events without touching other monitor controls.
+pub fn fn_key_mode_to_hw_bytes(fn_mode: i32, custom_active: bool) -> [u8; 4] {
+    if custom_active {
+        return [0x0E, 0x00, ENT_MONITOR, 0x00];
+    }
+    match fn_mode {
+        1 => [0x03, 0x00, ENT_MONITOR, 0x00], // Dim
+        2 => [0x07, 0x00, ENT_MONITOR, 0x00], // Alt Speaker
+        3 => [0x05, 0x00, ENT_MONITOR, 0x00], // Talkback
+        4 => [0x00, 0x00, ENT_MONITOR, 0x00], // Mono
+        5 => [0x01, 0x00, ENT_MONITOR, 0x00], // Polarity / Mid-Side
+        6 => [0x02, 0x00, ENT_MONITOR, 0x00], // Main Mute
+        7 => [0x0E, 0x00, ENT_MONITOR, 0x00], // RoomTune (handled via FnActive)
+        _ => [0x00, 0x00, 0xFF, 0x00],        // Off / Unbound
+    }
+}
+
+/// Program the iD MK3 hardware Function button binding register (`ENT_MONITOR, cs=0x0D`).
+pub fn write_fn_key_mode(dev: &TusbDevice<'_>, fn_mode: i32, custom_active: bool) {
+    let bytes = fn_key_mode_to_hw_bytes(fn_mode, custom_active);
+    let _ = dev.vendor_out(BREQ_PARAM, ENT_MONITOR, 0x0D00, &bytes);
+}
+
 /// Read the complete live iD MK3 state directly over USB and build the ValueTree + binding map.
 /// Always polls live hardware state (48V, Glow, Lift, Orbit, Gain, Main/HP1, Mixer, EQ, Comp, etc.);
 /// applies pro studio defaults for monitor preferences on first launch (`!settings.initialized`).
-pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) -> DirectContext {
+pub fn build_direct_context(
+    dev: &TusbDevice<'_>,
+    settings: &DirectUsbSettings,
+    custom_fn_active: bool,
+) -> DirectContext {
     let model_name = dev.detect_model_name();
     let serial = dev
         .vendor_in(BREQ_PARAM, ENT_SYSTEM, 0x0100, 32)
@@ -1418,6 +1452,10 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
     if buf_size > 0 {
         let _ = dev.set_asio_buffer_size(buf_size as u32);
     }
+
+    // Arm the physical Function button in hardware on every connect so it works immediately
+    // even after a fresh power cycle without Audient Device Manager.
+    write_fn_key_mode(dev, settings.fn_key_mode, custom_fn_active);
 
     let dsp_editable = sr <= 96000;
 
@@ -1495,6 +1533,7 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
     path_to_hw.insert([sys_p.as_slice(), &[0]].concat(), HwBinding::SampleRate);
     hw_to_path.insert(HwRegKey { entity: ENT_SYSTEM, cs: 0x02, ch: 0 }, [sys_p.as_slice(), &[0]].concat());
     path_to_hw.insert([sys_p.as_slice(), &[1]].concat(), HwBinding::BufferSize);
+    path_to_hw.insert([sys_p.as_slice(), &[2]].concat(), HwBinding::FnKeyMode);
     path_to_hw.insert([sys_p.as_slice(), &[3]].concat(), HwBinding::MonitorBool(0x0E));
     hw_to_path.insert(HwRegKey { entity: ENT_MONITOR, cs: 0x0E, ch: 0 }, [sys_p.as_slice(), &[3]].concat());
     path_to_hw.insert([sys_p.as_slice(), &[4]].concat(), HwBinding::SystemBool(0x0A));
@@ -2238,6 +2277,7 @@ pub fn build_direct_context(dev: &TusbDevice<'_>, settings: &DirectUsbSettings) 
         path_to_hw,
         hw_to_path,
         last_watched: HashMap::new(),
+        panel_cursor: 0,
         mixer_ch_paths,
         input_dsp_paths,
     };
@@ -2645,6 +2685,11 @@ pub fn write_param_to_hardware(
             pkt[6..8].copy_from_slice(&q.to_le_bytes());
             let _ = dev.vendor_out(BREQ_PARAM, ENT_ROOM, ((cs as u16) << 8) | (ch as u16), &pkt);
         }
+        HwBinding::FnKeyMode => {
+            if let Some(v) = value.as_i64() {
+                write_fn_key_mode(dev, v as i32, false);
+            }
+        }
     }
 }
 
@@ -2664,6 +2709,9 @@ pub fn poll_watched_front_panel(
         (HwRegKey { entity: ENT_MONITOR, cs: 0x02, ch: 0 }, false), // Main Mute
         (HwRegKey { entity: ENT_MONITOR, cs: 0x03, ch: 0 }, false), // Dim
         (HwRegKey { entity: ENT_MONITOR, cs: 0x00, ch: 0 }, false), // Mono
+        (HwRegKey { entity: ENT_MONITOR, cs: 0x01, ch: 0 }, false), // Polarity / Mid-Side
+        (HwRegKey { entity: ENT_MONITOR, cs: 0x05, ch: 0 }, false), // Talkback
+        (HwRegKey { entity: ENT_MONITOR, cs: 0x07, ch: 0 }, false), // Alt Speaker
         (HwRegKey { entity: ENT_MONITOR, cs: 0x0E, ch: 0 }, false), // Physical Fn button (FnActive)
         (HwRegKey { entity: ENT_OUTPUTS, cs: 0x01, ch: 4 }, true),  // HP1 Vol
         (HwRegKey { entity: ENT_OUTPUTS, cs: 0x02, ch: 4 }, false), // HP1 Mute
@@ -2678,43 +2726,62 @@ pub fn poll_watched_front_panel(
     }
 
     let mut updates = Vec::new();
-    for (key, is_q88) in regs {
-        let len = if is_q88 { 2 } else { 1 };
-        let Ok(buf) = dev.vendor_in(BREQ_PARAM, key.entity, ((key.cs as u16) << 8) | (key.ch as u16), len) else {
-            continue;
-        };
-        if buf.len() < len as usize {
-            continue;
-        }
-        let raw_i32 = if is_q88 {
-            i16::from_le_bytes([buf[0], buf[1]]) as i32
-        } else {
-            buf[0] as i32
-        };
-        let prev = ctx.last_watched.insert(key, raw_i32);
-        if seed_only || prev == Some(raw_i32) {
-            continue;
-        }
-        if let Some(path) = ctx.hw_to_path.get(&key) {
-            let val = if is_q88 {
-                JuceVar::Double(q88_to_db(&buf))
-            } else {
-                JuceVar::Int(raw_i32)
-            };
-            updates.push((path.clone(), val));
-        }
-    }
+    let total_slots = regs.len() + 1; // +1 for external sample-rate check
+    let slots_to_poll = if seed_only { total_slots } else { 2 };
 
-    // Also detect external sample rate changes (e.g. DAW / Windows Sound Settings)
-    if let Some(live_sr) = dev.get_sample_rate() {
-        if live_sr > 0 && live_sr != ctx.sample_rate {
-            ctx.sample_rate = live_sr;
-            if !seed_only {
-                if let Some(sr_path) = ctx.hw_to_path.get(&HwRegKey { entity: ENT_SYSTEM, cs: 0x02, ch: 0 }) {
-                    updates.push((sr_path.clone(), JuceVar::Int(live_sr as i32)));
+    for _ in 0..slots_to_poll {
+        let slot = if seed_only {
+            let cur = ctx.panel_cursor;
+            ctx.panel_cursor += 1;
+            cur
+        } else {
+            let cur = ctx.panel_cursor % total_slots;
+            ctx.panel_cursor = (cur + 1) % total_slots;
+            cur
+        };
+
+        if slot < regs.len() {
+            let (key, is_q88) = regs[slot];
+            let len = if is_q88 { 2 } else { 1 };
+            let Ok(buf) = dev.vendor_in(BREQ_PARAM, key.entity, ((key.cs as u16) << 8) | (key.ch as u16), len) else {
+                continue;
+            };
+            if buf.len() < len as usize {
+                continue;
+            }
+            let raw_i32 = if is_q88 {
+                i16::from_le_bytes([buf[0], buf[1]]) as i32
+            } else {
+                buf[0] as i32
+            };
+            let prev = ctx.last_watched.insert(key, raw_i32);
+            if seed_only || prev == Some(raw_i32) {
+                continue;
+            }
+            if let Some(path) = ctx.hw_to_path.get(&key) {
+                let val = if is_q88 {
+                    JuceVar::Double(q88_to_db(&buf))
+                } else {
+                    JuceVar::Int(raw_i32)
+                };
+                updates.push((path.clone(), val));
+            }
+        } else {
+            // Also detect external sample rate changes (e.g. DAW / Windows Sound Settings)
+            if let Some(live_sr) = dev.get_sample_rate() {
+                if live_sr > 0 && live_sr != ctx.sample_rate {
+                    ctx.sample_rate = live_sr;
+                    if !seed_only {
+                        if let Some(sr_path) = ctx.hw_to_path.get(&HwRegKey { entity: ENT_SYSTEM, cs: 0x02, ch: 0 }) {
+                            updates.push((sr_path.clone(), JuceVar::Int(live_sr as i32)));
+                        }
+                    }
                 }
             }
         }
+    }
+    if seed_only {
+        ctx.panel_cursor = 0;
     }
     Ok(updates)
 }
@@ -2954,5 +3021,22 @@ mod tests {
         assert_eq!(back.comp_blend.get(&0), Some(&0.5));
         assert_eq!(back.main_src, 2);
         assert_eq!(back.lb_virt_out, 1);
+    }
+
+    #[test]
+    #[ignore]
+    fn probe_fn_registers() {
+        let api = TusbApi::load().expect("Audient USB driver not found");
+        let dev = api.open_first().expect("No Audient iD device connected");
+        for &(name, ent) in &[("ENT_SYSTEM", ENT_SYSTEM), ("ENT_MONITOR", ENT_MONITOR)] {
+            println!("=== {name} (0x{ent:02X}) ===");
+            for cs in 0x00u8..=0x20u8 {
+                if let Ok(buf) = dev.vendor_in(BREQ_PARAM, ent, (cs as u16) << 8, 4) {
+                    if !buf.is_empty() {
+                        println!("  cs=0x{cs:02X}: {:02X?}", buf);
+                    }
+                }
+            }
+        }
     }
 }
