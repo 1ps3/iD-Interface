@@ -9107,3 +9107,362 @@ html.tray-menu-page body {
 :root:not([data-theme="liquidglass"]) .custom-select-menu {
   box-shadow: var(--float-shadow) !important;
 }
+
+
+/* =========================================================================
+   LIQUID GLASS · APPLE AUTHENTICITY CLEANUP PASS
+   ========================================================================= */
+
+/* Industrial uppercase labels stay uppercase on every non-Apple theme */
+.top-nav-tabs .nav-item,
+.set-row-title {
+  text-transform: uppercase;
+}
+
+/* 1. Title Case navigation & Settings row titles with natural SF Pro tracking */
+:root[data-theme="liquidglass"] .top-nav-tabs .nav-item {
+  text-transform: none;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.05px;
+}
+
+:root[data-theme="liquidglass"] .top-nav-tabs .nav-item.active {
+  font-weight: 600;
+}
+
+:root[data-theme="liquidglass"] .set-row-title {
+  text-transform: none;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.05px;
+  color: var(--text-primary);
+}
+
+:root[data-theme="liquidglass"] .set-row-desc {
+  font-size: 10.5px;
+  letter-spacing: 0;
+  color: var(--text-secondary);
+}
+
+/* 2. Apple apps use SF Pro with tabular figures for readouts, never a coding font */
+:root[data-theme="liquidglass"] {
+  --font-mono: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+}
+
+:root[data-theme="liquidglass"] body {
+  font-feature-settings: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 3. Native macOS controls use the arrow cursor (no web-style pointing hand) */
+:root[data-theme="liquidglass"] button,
+:root[data-theme="liquidglass"] select,
+:root[data-theme="liquidglass"] .dock-select,
+:root[data-theme="liquidglass"] .insp-ch-select,
+:root[data-theme="liquidglass"] .custom-select-opt,
+:root[data-theme="liquidglass"] .seg-btn,
+:root[data-theme="liquidglass"] .rm-dot,
+:root[data-theme="liquidglass"] .switch-toggle,
+:root[data-theme="liquidglass"] .tray-menu-item {
+  cursor: default;
+}
+
+/* 4. macOS press feedback: controls tint on click instead of shrinking */
+:root[data-theme="liquidglass"] .action-btn:active,
+:root[data-theme="liquidglass"] .mon-btn:active,
+:root[data-theme="liquidglass"] .ms-btn:active,
+:root[data-theme="liquidglass"] .mini-pill-btn:active,
+:root[data-theme="liquidglass"] .tone-btn:active,
+:root[data-theme="liquidglass"] .orbit-btn:active,
+:root[data-theme="liquidglass"] .seg-btn:active,
+:root[data-theme="liquidglass"] .tray-menu-item:active {
+  transform: none;
+  filter: brightness(1.2);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .action-btn:active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mon-btn:active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .ms-btn:active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-pill-btn:active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .tone-btn:active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .orbit-btn:active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .seg-btn:active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .tray-menu-item:active {
+  filter: brightness(0.9);
+}
+
+/* 5. macOS accent focus ring for keyboard navigation */
+:root[data-theme="liquidglass"] button:focus-visible,
+:root[data-theme="liquidglass"] input:focus-visible,
+:root[data-theme="liquidglass"] .dock-select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--mac-accent, #0a84ff) 50%, transparent);
+  outline-offset: 0;
+}
+
+:root[data-theme="liquidglass"] button:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* 6. Flat Apple system colours on active states (no coloured glows or glossy gradients) */
+:root[data-theme="liquidglass"] .ms-btn.mute-btn.active,
+:root[data-theme="liquidglass"] .mon-btn.danger-active.active,
+:root[data-theme="liquidglass"] .mini-pill-btn.danger-active.active,
+:root[data-theme="liquidglass"] .action-btn.danger-btn {
+  background: #ff453a;
+  background-image: none;
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"] .ms-btn.solo-btn.active,
+:root[data-theme="liquidglass"] .mini-pill-btn.solo-pill.active,
+:root[data-theme="liquidglass"] .mon-btn.solo-btn.active {
+  background: #ff9f0a;
+  background-image: none;
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"] .mini-pill-btn.green-active.active {
+  background: #30d158;
+  background-image: none;
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .ms-btn.mute-btn.active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mon-btn.danger-active.active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-pill-btn.danger-active.active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .action-btn.danger-btn {
+  background: #ff3b30;
+  background-image: none;
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .ms-btn.solo-btn.active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-pill-btn.solo-pill.active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mon-btn.solo-btn.active {
+  background: #ff9500;
+  background-image: none;
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-pill-btn.green-active.active {
+  background: #34c759;
+  background-image: none;
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"] .action-btn.accent-btn,
+:root[data-theme="liquidglass"] .action-btn.accent-btn:hover {
+  background: var(--mac-accent, #0a84ff);
+  border-color: transparent;
+  color: var(--mac-accent-fg, #ffffff);
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"] .tone-btn.active,
+:root[data-theme="liquidglass"] .orbit-btn.active,
+:root[data-theme="liquidglass"] .scene-slot-btn.active,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .scene-slot-btn.active,
+:root[data-theme="liquidglass"] .lb-src-btn.active,
+:root[data-theme="liquidglass"] .eq-band-pill.active,
+:root[data-theme="liquidglass"] .preamp-eq-band-tile.active,
+:root[data-theme="liquidglass"] .rt-profile-card.active {
+  box-shadow: none;
+}
+
+/* Native macOS radio button: accent disc with a small white centre dot */
+:root[data-theme="liquidglass"] .rm-dot.active {
+  background: radial-gradient(circle, #ffffff 0 3px, var(--mac-accent, #0a84ff) 3.5px);
+  border-color: var(--mac-accent, #0a84ff);
+  box-shadow: none;
+}
+
+/* 7. Flat recessed capsules for the scene bar & bus level (Apple Music search-field style) */
+:root[data-theme="liquidglass"] .scene-bar,
+:root[data-theme="liquidglass"] .bus-vol-inline,
+:root[data-theme="liquidglass"] .reverb-bar {
+  background: rgba(255, 255, 255, 0.07);
+  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .scene-bar,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .bus-vol-inline,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .reverb-bar {
+  background: rgba(0, 0, 0, 0.05);
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
+  box-shadow: none;
+}
+
+/* 8. Neutral (non-blue-tinted) Dark Mode menus, popovers, wells & window edge */
+:root[data-theme="liquidglass"] .app-shell {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"] .tray-menu-card,
+:root[data-theme="liquidglass"] .custom-select-menu,
+:root[data-theme="liquidglass"] .modal-card {
+  background: rgba(40, 40, 42, 0.84);
+  border: 0.5px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+}
+
+:root[data-theme="liquidglass"] .preamp-eq-oled,
+:root[data-theme="liquidglass"] .comp-transfer-oled,
+:root[data-theme="liquidglass"] .preamp-comp-gr,
+:root[data-theme="liquidglass"] .comp-gr-oled,
+:root[data-theme="liquidglass"] .eq-oled-wrap,
+:root[data-theme="liquidglass"] .rt-eq-oled,
+:root[data-theme="liquidglass"] .rt-profile-card-oled {
+  background: rgba(0, 0, 0, 0.22);
+  border-color: rgba(255, 255, 255, 0.07);
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"] .fader-thumb {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* 9. Neutral Light Mode greys (replace navy-tinted borders, knobs & text with Apple neutrals) */
+:root[data-theme="liquidglass"][data-glass-scheme="light"] {
+  --dial-mid: #f2f2f4;
+  --dial-bot: #e2e2e7;
+  --dial-stroke: rgba(0, 0, 0, 0.14);
+  --dial-text: #1d1d1f;
+  --dial-track-bg: rgba(0, 0, 0, 0.1);
+  --hw-bg-bot: rgba(242, 242, 245, 0.9);
+  --hw-disc: rgba(240, 240, 243, 0.85);
+  --hw-disc-stroke: rgba(0, 0, 0, 0.1);
+  --hw-knob-mid: #f2f2f4;
+  --hw-knob-bot: #dedee3;
+  --hw-knob-rim-mid: #d1d1d6;
+  --hw-knob-rim-bot: #aeaeb2;
+  --hw-knob-shadow: rgba(0, 0, 0, 0.14);
+  --hw-well-bg: rgba(0, 0, 0, 0.06);
+  --hw-well-border: rgba(0, 0, 0, 0.08);
+  --hw-btn-bot: rgba(242, 242, 245, 0.86);
+  --hw-btn-border: rgba(0, 0, 0, 0.12);
+  --hw-btn-fg: #1d1d1f;
+  --hw-model-fg: #1d1d1f;
+  --hw-pill-cutout: rgba(0, 0, 0, 0.12);
+  --hw-meter-bg: rgba(0, 0, 0, 0.08);
+  --hw-meter-border: rgba(0, 0, 0, 0.08);
+  --hw-meter-lbl: rgba(0, 0, 0, 0.45);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .app-shell {
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: none;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .tray-menu-card,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .custom-select-menu,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .modal-card {
+  background: rgba(246, 246, 248, 0.86);
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+  color: #1d1d1f;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .custom-select-opt {
+  color: #1d1d1f;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .preamp-eq-oled,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .comp-transfer-oled,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .preamp-comp-gr,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .comp-gr-oled,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .eq-oled-wrap,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .rt-eq-oled,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .rt-profile-card-oled {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 0.5px 1.5px rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .dock-divider,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .routing-matrix-head,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .routing-row,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .alt-trim-bar {
+  border-color: rgba(0, 0, 0, 0.07);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .dock-divider {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .rm-dot:not(.active) {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .preamp-ch-num,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .sg-status-pill,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .phase-tag {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.06);
+  color: #1d1d1f;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .fader-thumb {
+  background: linear-gradient(180deg, #ffffff 0%, #f0f0f2 100%);
+  border-color: rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .fader-thumb-ridge {
+  background: rgba(0, 0, 0, 0.14);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .fader-slot,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .mini-slider,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .am-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .switch-toggle:not(.on) {
+  background: rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 0.5px 1px rgba(0, 0, 0, 0.1);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .icon-btn {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .icon-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #1d1d1f;
+}
+
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .brand-model,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .view-title,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .strip-nums,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .preamp-ch-name,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .rm-out-label,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .meter-col-label,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .comp-val,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .set-row-title,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .bus-vol-val,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .strip-db-readout,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .hpf-freq-val,
+:root[data-theme="liquidglass"][data-glass-scheme="light"] .phase-placeholder h3 {
+  color: #1d1d1f;
+}

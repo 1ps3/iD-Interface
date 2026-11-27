@@ -134,7 +134,7 @@ export function createSettingsView(container, store, callbacks = {}) {
       <div class="theme-workflow-row">
         <div class="theme-wf-item">
           <div>
-            <div class="set-row-title">DUAL PEAK + RMS METERS</div>
+            <div class="set-row-title">Dual Peak + RMS Meters</div>
             <div class="set-row-desc">Inner RMS loudness density + click peak pills to clear latched clips</div>
           </div>
           <button type="button" class="switch-toggle ${rmsOn ? "on" : ""}" id="togRmsMeters"></button>
@@ -142,7 +142,7 @@ export function createSettingsView(container, store, callbacks = {}) {
 
         <div class="theme-wf-item">
           <div>
-            <div class="set-row-title">COMPACT WAVEFORM</div>
+            <div class="set-row-title">Compact Waveform</div>
             <div class="set-row-desc">Subtle faded audio history waveform along the bottom of Compact Mode</div>
           </div>
           <button type="button" class="switch-toggle ${compactWaveOn ? "on" : ""}" id="togCompactWave"></button>
@@ -150,7 +150,7 @@ export function createSettingsView(container, store, callbacks = {}) {
 
         <div class="theme-wf-item">
           <div>
-            <div class="set-row-title">STUDIO HOTKEYS</div>
+            <div class="set-row-title">Studio Hotkeys</div>
             <div class="set-row-desc">M Mute · D Dim · O Mono · T Talk · C Compact · ${isMacOS ? "⌥1–4" : "Alt+1–4"} Scenes</div>
           </div>
           <button type="button" class="switch-toggle ${hotkeysOn ? "on" : ""}" id="togHotkeys"></button>
@@ -224,7 +224,7 @@ export function createSettingsView(container, store, callbacks = {}) {
         <div class="dock-title">APP &amp; SOFTWARE SETTINGS</div>
         <div class="settings-card-row">
           <div>
-            <div class="set-row-title">HARDWARE ENGINE</div>
+            <div class="set-row-title">Hardware Engine</div>
             <div class="set-row-desc">Switch between Direct USB and Audient Device Manager</div>
           </div>
           <select class="dock-select set-select" id="setOfflineEngine">
@@ -234,7 +234,7 @@ export function createSettingsView(container, store, callbacks = {}) {
         </div>
         <div class="settings-card-row">
           <div>
-            <div class="set-row-title">SOFTWARE UPDATES</div>
+            <div class="set-row-title">Software Updates</div>
             <div class="set-row-desc" id="updateStatusDesc">iD Interface v${appVersion} · Checks GitHub Releases</div>
           </div>
           <button type="button" class="mini-pill-btn hw-mem-btn" id="btnCheckUpdates">CHECK</button>
@@ -397,14 +397,14 @@ export function createSettingsView(container, store, callbacks = {}) {
       <div class="settings-knob-pair">
         <div class="settings-card-row knob-card">
           <div>
-            <div class="set-row-title">DIM DEPTH</div>
+            <div class="set-row-title">Dim Depth</div>
             <div class="set-row-desc">Attenuation applied when Dim is active</div>
           </div>
           <div class="set-knob-host" id="dimDepthKnob"></div>
         </div>
         <div class="settings-card-row knob-card">
           <div>
-            <div class="set-row-title">REF LEVEL</div>
+            <div class="set-row-title">Ref Level</div>
             <div class="set-row-desc">Target dB when recalling Reference Level</div>
           </div>
           <div class="set-knob-host" id="refVolKnob"></div>
@@ -413,7 +413,7 @@ export function createSettingsView(container, store, callbacks = {}) {
 
       <div class="settings-card-row">
         <div>
-          <div class="set-row-title">VOLUME RECALL</div>
+          <div class="set-row-title">Volume Recall</div>
           <div class="set-row-desc">Restore last monitor level on power-up</div>
         </div>
         <button class="switch-toggle" id="togVolRecall"></button>
@@ -421,14 +421,14 @@ export function createSettingsView(container, store, callbacks = {}) {
 
       <div class="settings-card-row">
         <div>
-          <div class="set-row-title">TALKBACK SOURCE</div>
+          <div class="set-row-title">Talkback Source</div>
           <div class="set-row-desc">Input channel routed to Cue mixes when Talk is active</div>
         </div>
         <select class="dock-select set-select" id="selTalkSrc"></select>
       </div>
 
       <div class="settings-card-col">
-        <div class="set-row-title">MONO MODE</div>
+        <div class="set-row-title">Mono Mode</div>
         <div class="seg-group full-width" id="monoModeSeg">
           <button class="seg-btn" data-val="0">LEFT</button>
           <button class="seg-btn" data-val="1">CENTRE</button>
@@ -438,7 +438,7 @@ export function createSettingsView(container, store, callbacks = {}) {
 
       <div class="settings-card-row">
         <div>
-          <div class="set-row-title">FUNCTION BUTTON</div>
+          <div class="set-row-title">Function Button</div>
           <div class="set-row-desc" id="fnKeyDesc">Action assigned to the physical iD function key</div>
         </div>
         <select class="dock-select set-select" id="selFnKey"></select>
@@ -580,7 +580,7 @@ export function createSettingsView(container, store, callbacks = {}) {
 
       <div class="settings-card-row">
         <div>
-          <div class="set-row-title">OPTICAL INPUT</div>
+          <div class="set-row-title">Optical Input</div>
           <div class="set-row-desc">Switch digital optical input between ADAT &amp; S/PDIF</div>
         </div>
         <div class="seg-group" id="optModeSeg">
@@ -591,7 +591,7 @@ export function createSettingsView(container, store, callbacks = {}) {
 
       <div class="settings-card-row">
         <div>
-          <div class="set-row-title">GLOBAL MUTE</div>
+          <div class="set-row-title">Global Mute</div>
           <div class="set-row-desc">Mute all outputs together (Speakers, Main &amp; Alt)</div>
         </div>
         <button class="switch-toggle" id="togGlobalMute"></button>
@@ -599,7 +599,7 @@ export function createSettingsView(container, store, callbacks = {}) {
 
       <div class="settings-card-row">
         <div>
-          <div class="set-row-title">SHOW PREAMP TRIM</div>
+          <div class="set-row-title">Show Preamp Trim</div>
           <div class="set-row-desc">Display digital Trim (0–15 dB) alongside preamp Gain</div>
         </div>
         <button class="switch-toggle" id="togPreampTrim"></button>
@@ -607,7 +607,7 @@ export function createSettingsView(container, store, callbacks = {}) {
 
       <div class="settings-card-row" id="rowOnboardMemory">
         <div>
-          <div class="set-row-title">ONBOARD MEMORY</div>
+          <div class="set-row-title">Onboard Memory</div>
           <div class="set-row-desc single-line-desc" id="hwBootDesc">Save or reload running desk state on hardware flash</div>
         </div>
         <div class="rt-toggles" id="hwMemBtns">
@@ -618,7 +618,7 @@ export function createSettingsView(container, store, callbacks = {}) {
 
       <div class="settings-card-row">
         <div>
-          <div class="set-row-title">COMPACT POSITION</div>
+          <div class="set-row-title">Compact Position</div>
           <div class="set-row-desc single-line-desc">Collapse to window top-right or remember last spot</div>
         </div>
         <div class="seg-group" id="compactPosSeg">
@@ -629,7 +629,7 @@ export function createSettingsView(container, store, callbacks = {}) {
 
       <div class="settings-card-row">
         <div>
-          <div class="set-row-title">CLOSE BUTTON (×)</div>
+          <div class="set-row-title">Close Button (×)</div>
           <div class="set-row-desc" id="closeActionDesc">${
             isMacOS
               ? "Choose whether pressing × hides to the top menu bar or quits the app"
@@ -644,7 +644,7 @@ export function createSettingsView(container, store, callbacks = {}) {
 
       <div class="settings-card-row">
         <div>
-          <div class="set-row-title">SOFTWARE UPDATES</div>
+          <div class="set-row-title">Software Updates</div>
           <div class="set-row-desc single-line-desc" id="updateStatusDesc">${
             lastUpdateCheck?.message || `iD Interface v${appVersion} · Checks GitHub Releases`
           }</div>
