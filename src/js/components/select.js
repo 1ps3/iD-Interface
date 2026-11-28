@@ -111,6 +111,7 @@ function openMenuFor(selectEl) {
   menu.setAttribute("role", "listbox");
 
   const addOptionItem = (opt) => {
+    if (opt.hidden) return;
     const item = document.createElement("button");
     item.type = "button";
     item.className = "custom-select-opt";

@@ -3168,11 +3168,100 @@ html.is-snapped body {
   gap: 8px;
 }
 
+.dsp-card-head .dock-title {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .dsp-card-actions,
 .insp-comp-btns {
   display: flex;
   align-items: center;
   gap: 5px;
+  flex-shrink: 0;
+}
+
+.dsp-card-actions .mini-pill-btn {
+  white-space: nowrap;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+}
+
+.dsp-preset-select {
+  width: auto;
+  min-width: 104px;
+  max-width: 132px;
+  height: 22px;
+  padding: 0 20px 0 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  border-radius: 7px;
+  background-position: right 6px center;
+  text-overflow: ellipsis;
+}
+
+.dsp-preset-action-btn[hidden] {
+  display: none !important;
+}
+
+.dsp-del-btn {
+  color: var(--text-muted);
+  padding: 0 6px !important;
+}
+
+.dsp-del-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 90, 82, 0.22);
+  border-color: rgba(255, 90, 82, 0.55);
+}
+
+.preset-modal-card {
+  width: 310px;
+  padding: 18px 20px 16px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preset-modal-card h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.9px;
+  color: var(--text-primary);
+}
+
+.preset-name-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+  transition: border-color 140ms ease;
+}
+
+.preset-name-input:focus {
+  border-color: var(--accent-blue, #3898ff);
+}
+
+.preset-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
 }
 
 .preamp-eq-oled {

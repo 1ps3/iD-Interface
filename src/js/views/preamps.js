@@ -32,6 +32,112 @@ const COMP_DEFAULTS = {
   Blend: 1.0,
 };
 
+const EQ_PRESETS = [
+  {
+    id: "vocal-presence",
+    name: "Vocal Presence",
+    bands: [
+      { t: 3, f: 80, g: 0.0, q: 0.7 },
+      { t: 8, f: 260, g: -2.5, q: 1.8 },
+      { t: 8, f: 3200, g: 2.5, q: 1.4 },
+      { t: 7, f: 10000, g: 2.0, q: 0.7 },
+    ],
+  },
+  {
+    id: "broadcast",
+    name: "Broadcast / Podcast",
+    bands: [
+      { t: 5, f: 120, g: 2.5, q: 0.8 },
+      { t: 8, f: 350, g: -3.0, q: 2.2 },
+      { t: 8, f: 3800, g: 3.0, q: 1.6 },
+      { t: 7, f: 11000, g: 1.5, q: 0.7 },
+    ],
+  },
+  {
+    id: "warmth-air",
+    name: "Warmth & Air",
+    bands: [
+      { t: 5, f: 100, g: 2.0, q: 0.7 },
+      { t: 8, f: 400, g: -1.5, q: 1.5 },
+      { t: 8, f: 2500, g: 1.0, q: 1.2 },
+      { t: 7, f: 12000, g: 3.0, q: 0.7 },
+    ],
+  },
+  {
+    id: "acoustic-guitar",
+    name: "Acoustic Guitar",
+    bands: [
+      { t: 3, f: 90, g: 0.0, q: 0.7 },
+      { t: 8, f: 220, g: -3.5, q: 2.0 },
+      { t: 8, f: 2800, g: 2.0, q: 1.4 },
+      { t: 7, f: 10000, g: 2.5, q: 0.7 },
+    ],
+  },
+  {
+    id: "de-mud",
+    name: "De-Mud & Clean",
+    bands: [
+      { t: 3, f: 85, g: 0.0, q: 0.7 },
+      { t: 8, f: 280, g: -3.0, q: 2.2 },
+      { t: 8, f: 650, g: -1.5, q: 2.5 },
+      { t: 8, f: 5000, g: 1.0, q: 1.4 },
+    ],
+  },
+  {
+    id: "de-harsh",
+    name: "De-Harsh / Smooth",
+    bands: [
+      { t: 5, f: 110, g: 1.5, q: 0.7 },
+      { t: 8, f: 2400, g: -2.0, q: 2.0 },
+      { t: 8, f: 6500, g: -3.0, q: 3.2 },
+      { t: 7, f: 12500, g: 1.5, q: 0.7 },
+    ],
+  },
+  {
+    id: "electric-di",
+    name: "Electric Guitar / DI",
+    bands: [
+      { t: 3, f: 95, g: 0.0, q: 0.7 },
+      { t: 8, f: 320, g: -2.0, q: 1.6 },
+      { t: 8, f: 1800, g: 3.0, q: 1.3 },
+      { t: 1, f: 7500, g: 0.0, q: 0.7 },
+    ],
+  },
+];
+
+const COMP_PRESETS = [
+  {
+    id: "vocal-leveler",
+    name: "Vocal Leveler",
+    vals: { Threshold: -18, Ratio: 4, Attack: 12, Release: 120, Makeup: 3.0, Blend: 1.0 },
+  },
+  {
+    id: "broadcast",
+    name: "Broadcast / Voice",
+    vals: { Threshold: -22, Ratio: 4, Attack: 6, Release: 90, Makeup: 4.5, Blend: 1.0 },
+  },
+  {
+    id: "gentle-glue",
+    name: "Gentle Glue",
+    vals: { Threshold: -14, Ratio: 2, Attack: 25, Release: 180, Makeup: 1.5, Blend: 1.0 },
+  },
+  {
+    id: "tight-punch",
+    name: "Tight Punch",
+    vals: { Threshold: -20, Ratio: 4, Attack: 30, Release: 70, Makeup: 3.5, Blend: 1.0 },
+  },
+  {
+    id: "parallel-smash",
+    name: "Parallel Smash",
+    vals: { Threshold: -28, Ratio: 8, Attack: 5, Release: 80, Makeup: 6.0, Blend: 0.45 },
+  },
+  {
+    id: "peak-limiter",
+    name: "Peak Limiter",
+    vals: { Threshold: -10, Ratio: 16, Attack: 3.5, Release: 60, Makeup: 1.0, Blend: 1.0 },
+  },
+];
+
 function fmtFreqShort(hz) {
   const f = Math.round(hz);
   if (f >= 10000) return `${(f / 1000).toFixed(0)}k`;
@@ -105,8 +211,108 @@ export function createPreampsView(container, store) {
   let inputMeters = [];
   let grBarEl = null;
   let grValEl = null;
+  let refreshPresetDropdowns = null;
   let paramBindings = new Map();
   let dspBindings = new Map();
+
+  const getCustomEqPresets = () =>
+    Array.isArray(store.uiPrefs?.customEqPresets) ? store.uiPrefs.customEqPresets : [];
+  const getCustomCompPresets = () =>
+    Array.isArray(store.uiPrefs?.customCompPresets) ? store.uiPrefs.customCompPresets : [];
+
+  function populatePresetSelect(selectEl, builtins, customs, selectedId, defaultLabel = "Default") {
+    if (!selectEl) return;
+    selectEl.innerHTML = "";
+    const optDefault = document.createElement("option");
+    optDefault.value = "";
+    optDefault.hidden = true;
+    optDefault.textContent = defaultLabel;
+    selectEl.appendChild(optDefault);
+
+    const optDirty = document.createElement("option");
+    optDirty.value = "__dirty__";
+    optDirty.hidden = true;
+    optDirty.textContent = "Custom *";
+    selectEl.appendChild(optDirty);
+
+    const grpBuilt = document.createElement("optgroup");
+    grpBuilt.label = "Presets";
+    for (const p of builtins) {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.name;
+      grpBuilt.appendChild(opt);
+    }
+    selectEl.appendChild(grpBuilt);
+
+    const grpCustom = document.createElement("optgroup");
+    grpCustom.label = "Custom";
+    for (const p of customs) {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.name;
+      grpCustom.appendChild(opt);
+    }
+    const saveOpt = document.createElement("option");
+    saveOpt.value = "__save_custom__";
+    saveOpt.textContent = "+ Save Current as Custom…";
+    grpCustom.appendChild(saveOpt);
+    selectEl.appendChild(grpCustom);
+
+    selectEl.value = selectedId || "";
+  }
+
+  function promptPresetName(title, defaultName, onSave) {
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    backdrop.innerHTML = `
+      <div class="modal-card preset-modal-card" role="dialog" aria-modal="true">
+        <h3>${title}</h3>
+        <input type="text" class="preset-name-input" id="presetNameInput" maxlength="32" placeholder="Preset name…" />
+        <div class="preset-modal-actions">
+          <button type="button" class="action-btn" id="btnPresetCancel">CANCEL</button>
+          <button type="button" class="action-btn accent-btn" id="btnPresetConfirm">SAVE</button>
+        </div>
+      </div>
+    `;
+    const input = backdrop.querySelector("#presetNameInput");
+    input.value = defaultName;
+
+    const dismiss = () => {
+      window.removeEventListener("keydown", onKey);
+      backdrop.remove();
+    };
+    const commit = () => {
+      const clean = input.value.trim();
+      if (!clean) {
+        input.focus();
+        return;
+      }
+      dismiss();
+      onSave(clean);
+    };
+    const onKey = (ev) => {
+      if (ev.key === "Escape") {
+        ev.preventDefault();
+        dismiss();
+      } else if (ev.key === "Enter") {
+        ev.preventDefault();
+        commit();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    backdrop.addEventListener("click", (ev) => {
+      if (ev.target === backdrop) dismiss();
+    });
+    backdrop.querySelector("#btnPresetCancel").addEventListener("click", dismiss);
+    backdrop.querySelector("#btnPresetConfirm").addEventListener("click", commit);
+
+    document.body.appendChild(backdrop);
+    requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+    });
+  }
 
   container.innerHTML = `
     <div class="view-header">
@@ -522,6 +728,9 @@ export function createPreampsView(container, store) {
           <div class="dsp-card-head">
             <span class="dock-title">4-BAND PARAMETRIC EQ</span>
             <div class="dsp-card-actions">
+              <button class="mini-pill-btn dsp-preset-action-btn" id="btnEqSaveCustom" title="Save current EQ curve as a custom preset" hidden ${dspEditable ? "" : "disabled"}>SAVE</button>
+              <button class="mini-pill-btn dsp-preset-action-btn dsp-del-btn" id="btnEqDelCustom" title="Delete selected custom EQ preset" hidden ${dspEditable ? "" : "disabled"}>DEL</button>
+              <select class="dock-select dsp-preset-select" id="selEqPreset" title="Load EQ Preset" ${dspEditable ? "" : "disabled"}></select>
               <button class="mini-pill-btn ab-btn" id="btnEqAb" title="Toggle A/B EQ Compare" ${dspEditable ? "" : "disabled"}>A / B</button>
               <button class="mini-pill-btn" id="btnEqReset" title="Reset EQ to default profile" ${dspEditable ? "" : "disabled"}>RESET</button>
               <button class="mini-pill-btn green-active" id="btnEqOn" ${dspEditable ? "" : "disabled"}>EQ</button>
@@ -615,6 +824,9 @@ export function createPreampsView(container, store) {
           <div class="dsp-card-head">
             <span class="dock-title">COMPRESSOR</span>
             <div class="dsp-card-actions">
+              <button class="mini-pill-btn dsp-preset-action-btn" id="btnCompSaveCustom" title="Save current Compressor settings as a custom preset" hidden ${dspEditable ? "" : "disabled"}>SAVE</button>
+              <button class="mini-pill-btn dsp-preset-action-btn dsp-del-btn" id="btnCompDelCustom" title="Delete selected custom Compressor preset" hidden ${dspEditable ? "" : "disabled"}>DEL</button>
+              <select class="dock-select dsp-preset-select" id="selCompPreset" title="Load Compressor Preset" ${dspEditable ? "" : "disabled"}></select>
               <button class="mini-pill-btn ab-btn" id="btnCompAb" title="Toggle A/B Compressor Compare" ${dspEditable ? "" : "disabled"}>A / B</button>
               <button class="mini-pill-btn" id="btnCompReset" title="Reset Compressor to default profile" ${dspEditable ? "" : "disabled"}>RESET</button>
               <button class="mini-pill-btn green-active" id="btnCompOn" ${dspEditable ? "" : "disabled"}>COMP</button>
@@ -698,7 +910,12 @@ export function createPreampsView(container, store) {
     const btnEqOn = dspPanel.querySelector("#btnEqOn");
     const btnEqAb = dspPanel.querySelector("#btnEqAb");
     const btnEqReset = dspPanel.querySelector("#btnEqReset");
+    const selEqPreset = dspPanel.querySelector("#selEqPreset");
+    const btnEqSaveCustom = dspPanel.querySelector("#btnEqSaveCustom");
+    const btnEqDelCustom = dspPanel.querySelector("#btnEqDelCustom");
     const selEqType = dspPanel.querySelector("#pEqType");
+    let chosenEqPresetId = "";
+    populatePresetSelect(selEqPreset, EQ_PRESETS, getCustomEqPresets(), "", "Flat");
     const bandTiles = Array.from(dspPanel.querySelectorAll("#pEqBandTiles .preamp-eq-band-tile"));
     const eqSvg = dspPanel.querySelector("#pEqSvg");
     const eqBandFills = dspPanel.querySelector("#pEqBandFills");
@@ -894,6 +1111,35 @@ export function createPreampsView(container, store) {
         const gStr = sb.gain > 0 ? `+${sb.gain.toFixed(1)}` : sb.gain.toFixed(1);
         eqReadout.textContent = `B${selectedEqBand + 1} · ${fmtFreqShort(sb.freq)}Hz · ${gStr}dB · Q${sb.q.toFixed(1)}`;
       }
+      if (selEqPreset) {
+        const eqMatches = (bands) =>
+          Array.isArray(bands) &&
+          bands.every((pb, i) => {
+            const bs = bStates[i];
+            if (!bs) return false;
+            return (
+              bs.type === pb.t &&
+              Math.abs(bs.freq - pb.f) <= Math.max(8, pb.f * 0.03) &&
+              Math.abs(bs.gain - pb.g) <= 0.15 &&
+              Math.abs(bs.q - pb.q) <= 0.15
+            );
+          });
+        const isFlat =
+          eqMatches(EQ_DEFAULT_BANDS) ||
+          bStates.every((bs) => bs.type === 11 || (bs.type !== 3 && bs.type !== 1 && Math.abs(bs.gain) < 0.05));
+        const customs = getCustomEqPresets();
+        const allEq = [...customs, ...EQ_PRESETS];
+        let matched = chosenEqPresetId ? allEq.find((p) => p.id === chosenEqPresetId && eqMatches(p.bands)) : null;
+        if (!matched) {
+          matched = allEq.find((p) => eqMatches(p.bands)) || null;
+          chosenEqPresetId = matched ? matched.id : "";
+        }
+        const isCustomSelected = Boolean(matched && customs.some((c) => c.id === matched.id));
+        const nextVal = matched ? matched.id : isFlat ? "" : "__dirty__";
+        if (selEqPreset.value !== nextVal) selEqPreset.value = nextVal;
+        if (btnEqSaveCustom) btnEqSaveCustom.hidden = Boolean(matched || isFlat);
+        if (btnEqDelCustom) btnEqDelCustom.hidden = !isCustomSelected;
+      }
     }
 
     function syncSelectedEqBand() {
@@ -929,8 +1175,66 @@ export function createPreampsView(container, store) {
       }
     });
 
+    const openSaveEqModal = () => {
+      if (!dspEditable) return;
+      const prev = getCustomEqPresets();
+      const usedNums = new Set(prev.map((p) => Number((p.name.match(/^Custom (\d+)$/) || [])[1] || 0)));
+      let n = 1;
+      while (usedNums.has(n)) n++;
+      promptPresetName("SAVE EQ PRESET", `Custom ${n}`, (name) => {
+        const bands = bandRefs.map((b) => ({
+          t: Number(store.getVal(b.t, 8)),
+          f: Math.round(Number(store.getVal(b.f, 1000))),
+          g: Math.round(Number(store.getVal(b.g, 0)) * 10) / 10,
+          q: Math.round(Number(store.getVal(b.q, 1)) * 10) / 10,
+        }));
+        const curPrev = getCustomEqPresets();
+        const id = `custom-eq-${Date.now()}`;
+        const next = [...curPrev, { id, name, bands }];
+        chosenEqPresetId = id;
+        store.saveUiPref("customEqPresets", next);
+        populatePresetSelect(selEqPreset, EQ_PRESETS, next, id, "Flat");
+        drawEqGraph();
+      });
+    };
+
+    selEqPreset?.addEventListener("change", () => {
+      if (!dspEditable) return;
+      if (selEqPreset.value === "__save_custom__") {
+        drawEqGraph();
+        openSaveEqModal();
+        return;
+      }
+      const allEqPresets = [...getCustomEqPresets(), ...EQ_PRESETS];
+      const preset = allEqPresets.find((p) => p.id === selEqPreset.value);
+      if (!preset) return;
+      chosenEqPresetId = preset.id;
+      ensureEqEngaged();
+      bandRefs.forEach((b, idx) => {
+        const pb = preset.bands[idx];
+        if (!pb) return;
+        if (b.t) store.setParam(b.t, pb.t);
+        if (b.f) store.setParam(b.f, pb.f);
+        if (b.g) store.setParam(b.g, pb.g);
+        if (b.q) store.setParam(b.q, pb.q);
+      });
+      syncSelectedEqBand();
+    });
+
+    btnEqSaveCustom?.addEventListener("click", openSaveEqModal);
+
+    btnEqDelCustom?.addEventListener("click", () => {
+      if (!dspEditable || !chosenEqPresetId) return;
+      const next = getCustomEqPresets().filter((p) => p.id !== chosenEqPresetId);
+      chosenEqPresetId = "";
+      store.saveUiPref("customEqPresets", next);
+      populatePresetSelect(selEqPreset, EQ_PRESETS, next, "", "Flat");
+      drawEqGraph();
+    });
+
     btnEqReset.addEventListener("click", () => {
       if (!dspEditable) return;
+      chosenEqPresetId = "";
       bandRefs.forEach((b, idx) => {
         const def = EQ_DEFAULT_BANDS[idx] || EQ_DEFAULT_BANDS[1];
         if (b.t) store.setParam(b.t, def.t);
@@ -945,7 +1249,13 @@ export function createPreampsView(container, store) {
       const on = isEqActive();
       btnEqOn.classList.toggle("active", on);
       btnEqReset.disabled = !dspEditable;
+      if (selEqPreset) selEqPreset.disabled = !dspEditable;
+      if (btnEqSaveCustom) btnEqSaveCustom.disabled = !dspEditable;
+      if (btnEqDelCustom) btnEqDelCustom.disabled = !dspEditable;
       const faded = !on;
+      selEqPreset?.classList.toggle("is-bypassed", faded);
+      btnEqSaveCustom?.classList.toggle("is-bypassed", faded);
+      btnEqDelCustom?.classList.toggle("is-bypassed", faded);
       btnEqAb?.classList.toggle("is-bypassed", faded);
       btnEqReset?.classList.toggle("is-bypassed", faded);
       dspPanel.querySelector(".eq-card .preamp-eq-oled")?.classList.toggle("is-bypassed", faded);
@@ -960,6 +1270,11 @@ export function createPreampsView(container, store) {
     // --- FLAGSHIP COMPRESSOR LOGIC + TRANSFER CURVE OLED ---
     const btnCompOn = dspPanel.querySelector("#btnCompOn");
     const btnCompReset = dspPanel.querySelector("#btnCompReset");
+    const selCompPreset = dspPanel.querySelector("#selCompPreset");
+    const btnCompSaveCustom = dspPanel.querySelector("#btnCompSaveCustom");
+    const btnCompDelCustom = dspPanel.querySelector("#btnCompDelCustom");
+    let chosenCompPresetId = "";
+    populatePresetSelect(selCompPreset, COMP_PRESETS, getCustomCompPresets(), "", "Default");
     const compSvg = dspPanel.querySelector("#pCompSvg");
     const compCurve = dspPanel.querySelector("#pCompCurve");
     const compFill = dspPanel.querySelector("#pCompFill");
@@ -1011,6 +1326,35 @@ export function createPreampsView(container, store) {
 
       const rStr = String(Math.round(rat));
       compReadout.textContent = `THRESH ${Math.round(th)}dB · ${rStr}:1 · +${mk.toFixed(1)}dB`;
+      if (selCompPreset && compKnobMap.size > 0) {
+        const cur = {};
+        for (const [name, entry] of compKnobMap.entries()) {
+          cur[name] = entry.path ? Number(store.getVal(entry.path, COMP_DEFAULTS[name])) : COMP_DEFAULTS[name];
+        }
+        const compMatches = (vals) =>
+          Boolean(vals) &&
+          Math.abs(cur.Threshold - vals.Threshold) <= 0.6 &&
+          Math.abs(cur.Ratio - vals.Ratio) <= 0.5 &&
+          Math.abs(cur.Attack - vals.Attack) <= Math.max(1.5, vals.Attack * 0.12) &&
+          Math.abs(cur.Release - vals.Release) <= Math.max(6, vals.Release * 0.12) &&
+          Math.abs(cur.Makeup - vals.Makeup) <= 0.25 &&
+          Math.abs(cur.Blend - vals.Blend) <= 0.04;
+        const isDefault = compMatches(COMP_DEFAULTS);
+        const customs = getCustomCompPresets();
+        const allComp = [...customs, ...COMP_PRESETS];
+        let matched = chosenCompPresetId
+          ? allComp.find((p) => p.id === chosenCompPresetId && compMatches(p.vals))
+          : null;
+        if (!matched) {
+          matched = allComp.find((p) => compMatches(p.vals)) || null;
+          chosenCompPresetId = matched ? matched.id : "";
+        }
+        const isCustomSelected = Boolean(matched && customs.some((c) => c.id === matched.id));
+        const nextVal = matched ? matched.id : isDefault ? "" : "__dirty__";
+        if (selCompPreset.value !== nextVal) selCompPreset.value = nextVal;
+        if (btnCompSaveCustom) btnCompSaveCustom.hidden = Boolean(matched || isDefault);
+        if (btnCompDelCustom) btnCompDelCustom.hidden = !isCustomSelected;
+      }
     }
 
     const compKnobSpecs = [
@@ -1104,8 +1448,64 @@ export function createPreampsView(container, store) {
     compKnee.addEventListener("pointerup", endKnee);
     compKnee.addEventListener("pointercancel", endKnee);
 
+    const openSaveCompModal = () => {
+      if (!dspEditable) return;
+      const prev = getCustomCompPresets();
+      const usedNums = new Set(prev.map((p) => Number((p.name.match(/^Custom (\d+)$/) || [])[1] || 0)));
+      let n = 1;
+      while (usedNums.has(n)) n++;
+      promptPresetName("SAVE COMPRESSOR PRESET", `Custom ${n}`, (name) => {
+        const vals = {};
+        for (const [k, entry] of compKnobMap.entries()) {
+          const raw = entry.path ? Number(store.getVal(entry.path, COMP_DEFAULTS[k])) : COMP_DEFAULTS[k];
+          vals[k] = Math.round(raw * 100) / 100;
+        }
+        const curPrev = getCustomCompPresets();
+        const id = `custom-comp-${Date.now()}`;
+        const next = [...curPrev, { id, name, vals }];
+        chosenCompPresetId = id;
+        store.saveUiPref("customCompPresets", next);
+        populatePresetSelect(selCompPreset, COMP_PRESETS, next, id, "Default");
+        drawCompTransfer();
+      });
+    };
+
+    selCompPreset?.addEventListener("change", () => {
+      if (!dspEditable) return;
+      if (selCompPreset.value === "__save_custom__") {
+        drawCompTransfer();
+        openSaveCompModal();
+        return;
+      }
+      const allCompPresets = [...getCustomCompPresets(), ...COMP_PRESETS];
+      const preset = allCompPresets.find((p) => p.id === selCompPreset.value);
+      if (!preset?.vals) return;
+      chosenCompPresetId = preset.id;
+      ensureCompEngaged();
+      for (const [name, val] of Object.entries(preset.vals)) {
+        const entry = compKnobMap.get(name);
+        if (entry?.path) {
+          store.setParam(entry.path, val);
+          entry.knob.setValue(entry.scale !== 1 ? Math.round(val * entry.scale) : val);
+        }
+      }
+      drawCompTransfer();
+    });
+
+    btnCompSaveCustom?.addEventListener("click", openSaveCompModal);
+
+    btnCompDelCustom?.addEventListener("click", () => {
+      if (!dspEditable || !chosenCompPresetId) return;
+      const next = getCustomCompPresets().filter((p) => p.id !== chosenCompPresetId);
+      chosenCompPresetId = "";
+      store.saveUiPref("customCompPresets", next);
+      populatePresetSelect(selCompPreset, COMP_PRESETS, next, "", "Default");
+      drawCompTransfer();
+    });
+
     btnCompReset.addEventListener("click", () => {
       if (!dspEditable) return;
+      chosenCompPresetId = "";
       for (const [name, defVal] of Object.entries(COMP_DEFAULTS)) {
         const entry = compKnobMap.get(name);
         if (entry?.path) {
@@ -1145,8 +1545,7 @@ export function createPreampsView(container, store) {
         if (ref.q) store.setParam(ref.q, bVal.q);
       });
       syncEqAbBtn();
-      syncEqDeck();
-      drawEqGraph();
+      syncSelectedEqBand();
     });
 
     // --- Compressor A/B Compare ---
@@ -1183,8 +1582,14 @@ export function createPreampsView(container, store) {
       const on = isCompActive();
       btnCompOn.classList.toggle("active", on);
       btnCompReset.disabled = !dspEditable;
+      if (selCompPreset) selCompPreset.disabled = !dspEditable;
+      if (btnCompSaveCustom) btnCompSaveCustom.disabled = !dspEditable;
+      if (btnCompDelCustom) btnCompDelCustom.disabled = !dspEditable;
       compKnobs.forEach((k) => k.setDisabled(!dspEditable));
       const faded = !on;
+      selCompPreset?.classList.toggle("is-bypassed", faded);
+      btnCompSaveCustom?.classList.toggle("is-bypassed", faded);
+      btnCompDelCustom?.classList.toggle("is-bypassed", faded);
       btnCompAb?.classList.toggle("is-bypassed", faded);
       btnCompReset?.classList.toggle("is-bypassed", faded);
       dspPanel.querySelector(".comp-card .comp-transfer-oled")?.classList.toggle("is-bypassed", faded);
@@ -1195,6 +1600,13 @@ export function createPreampsView(container, store) {
     btnCompOn.addEventListener("click", () => dspEditable && store.toggleParam(compBypsPath));
     bindDsp(compBypsPath, syncCompOn);
     syncCompOn();
+
+    refreshPresetDropdowns = () => {
+      populatePresetSelect(selEqPreset, EQ_PRESETS, getCustomEqPresets(), chosenEqPresetId, "Flat");
+      populatePresetSelect(selCompPreset, COMP_PRESETS, getCustomCompPresets(), chosenCompPresetId, "Default");
+      drawEqGraph();
+      drawCompTransfer();
+    };
   }
 
   function rebuild() {
@@ -1215,6 +1627,7 @@ export function createPreampsView(container, store) {
 
   let dspRebuildTimer = null;
   store.onSnapshot(rebuild);
+  store.onUiPrefs?.(() => refreshPresetDropdowns?.());
   store.onParam((changedPath, prop, value) => {
     const k = pathKey(changedPath);
     const trimToggle = store.paths.inputs ? store.findParamPath(store.paths.inputs, "Trim") : null;
